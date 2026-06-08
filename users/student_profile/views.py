@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from shared.cloudinary_utils import upload_image
 
 from .models import (
     Profile,
@@ -44,9 +45,18 @@ class MyProfileView(APIView):
 
     def patch(self, request):
         profile = get_object_or_404(Profile, user=request.user)
+
+        data = request.data.copy()
+
+        # handle profile photo upload if a file was sent
+        if 'profile_photo' in request.FILES:
+            file = request.FILES['profile_photo']
+            url = upload_image(file, folder="campus_connect/profile_photos")
+            data['profile_photo'] = url
+
         serializer = PrivateProfileSerializer(
             profile,
-            data=request.data,
+            data=data,
             partial=True
         )
         if serializer.is_valid():
@@ -107,7 +117,14 @@ class EducationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = EducationSerializer(data=request.data)
+        data = request.data.copy()
+
+        if 'image' in request.FILES:
+            file = request.FILES['image']
+            url = upload_image(file, folder="campus_connect/education_images")
+            data['image_url'] = url
+
+        serializer = EducationSerializer(data=data)
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -210,7 +227,16 @@ class ProjectImageView(APIView):
 
     def post(self, request, project_id):
         project = get_object_or_404(Project, id=project_id, user=request.user)
-        serializer = ProjectImageSerializer(data=request.data)
+
+        data = request.data.copy()
+
+        # handle image file upload if a file was sent
+        if 'image' in request.FILES:
+            file = request.FILES['image']
+            url = upload_image(file, folder="campus_connect/project_images")
+            data['image_url'] = url
+
+        serializer = ProjectImageSerializer(data=data)
         if serializer.is_valid():
             serializer.save(project=project)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
