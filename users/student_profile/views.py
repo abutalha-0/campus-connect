@@ -142,7 +142,7 @@ class EducationView(APIView):
 
 
 class EducationDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated] 
 
     def patch(self, request, pk):
         education = get_object_or_404(Education, id=pk, user=request.user)
