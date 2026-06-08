@@ -121,12 +121,18 @@ class EducationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        data = request.data.copy()
-
+        image_url = None
         if 'image' in request.FILES:
             file = request.FILES['image']
-            url = upload_image(file, folder="campus_connect/education_images")
-            data['image_url'] = url
+            image_url = upload_image(file, folder="campus_connect/education_images")
+
+        data = {
+            'institution_name': request.data.get('institution_name', ''),
+            'degree': request.data.get('degree', ''),
+            'start_year': request.data.get('start_year'),
+            'end_year': request.data.get('end_year') or None,
+            'image_url': image_url or request.data.get('image_url', ''),
+        }
 
         serializer = EducationSerializer(data=data)
         if serializer.is_valid():
@@ -232,13 +238,16 @@ class ProjectImageView(APIView):
     def post(self, request, project_id):
         project = get_object_or_404(Project, id=project_id, user=request.user)
 
-        data = request.data.copy()
-
-        # handle image file upload if a file was sent
+        image_url = None
         if 'image' in request.FILES:
             file = request.FILES['image']
-            url = upload_image(file, folder="campus_connect/project_images")
-            data['image_url'] = url
+            image_url = upload_image(file, folder="campus_connect/project_images")
+
+        data = {
+            'image_url': image_url or request.data.get('image_url', ''),
+            'is_cover': request.data.get('is_cover', False),
+            'position': request.data.get('position', 0),
+        }
 
         serializer = ProjectImageSerializer(data=data)
         if serializer.is_valid():
