@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from shared.cloudinary_utils import upload_image
+from shared.cloudinary_utils import upload_image, delete_image, extract_public_id
 
 from .models import (
     Profile,
@@ -45,11 +46,15 @@ class MyProfileView(APIView):
 
     def patch(self, request):
         profile = get_object_or_404(Profile, user=request.user)
-
         data = request.data.copy()
 
-        # handle profile photo upload if a file was sent
         if 'profile_photo' in request.FILES:
+            # delete old image from Cloudinary first
+            if profile.profile_photo:
+                old_public_id = extract_public_id(profile.profile_photo)
+                if old_public_id:
+                    delete_image(old_public_id)
+
             file = request.FILES['profile_photo']
             url = upload_image(file, folder="campus_connect/profile_photos")
             data['profile_photo'] = url
@@ -63,7 +68,6 @@ class MyProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class PublicProfileView(APIView):
     permission_classes = [IsAuthenticated]
