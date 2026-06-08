@@ -1,0 +1,1 @@
+default_app_config = 'users.student_profile.apps.StudentProfileConfig'

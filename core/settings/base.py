@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'corsheaders',
     # local
     'users.accounts',
+    'users.student_profile',
    
 ]
 
