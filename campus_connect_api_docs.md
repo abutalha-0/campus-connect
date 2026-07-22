@@ -997,6 +997,33 @@ Note: `{id}` is the `UserSkill` ID from the profile response, not the `Skill` ID
 
 ## 10. Classroom — Subjects
 
+### 10.0 List My Subjects
+Returns all subjects owned by the requesting faculty. Group by `intake` on the
+client to render the "Subjects Taught" section.
+
+```
+GET /api/classroom/subjects/
+Auth: Required (verified faculty)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "name": "Data Structures",
+        "intake": "42",
+        "section": "B",
+        "room": "302",
+        "code": "739326",
+        "faculty_name": "Dr. Farhana Islam",
+        "created_at": "2026-06-08T20:00:00Z"
+    }
+]
+```
+
+---
+
 ### 10.1 Add Subject
 Create a subject. Only a **verified faculty** account may add subjects; the
 subject is owned by that faculty and issued a unique 6-digit share **code**
@@ -1118,9 +1145,10 @@ Auth: Required (verified faculty, owner)
 
 ## 11. Classroom — Resources
 
-Resources belong to a subject and are grouped in the UI by their free-text
-`topic` label (e.g. "WEEK 1 · INTRODUCTION"). All endpoints are scoped to the
-owning faculty; a subject owned by someone else returns `404`.
+Resources belong to a subject. They are grouped in the UI by the
+**Saturday–Friday week of their upload time** (`created_at`) — there is no
+manual week/topic field. All endpoints are scoped to the owning faculty; a
+subject owned by someone else returns `404`.
 
 A resource is either an **uploaded document** (PDF/PPT/DOC) or a **video link**:
 - To upload a document, send `multipart/form-data` with a `file` part — it is
@@ -1136,7 +1164,8 @@ VID    Video (link)
 ```
 
 ### 11.1 List Subject Resources
-Returns a flat list ordered oldest-first; group by `topic` on the client.
+Returns a flat list ordered newest-first; group by the Saturday–Friday week of
+`created_at` on the client.
 
 ```
 GET /api/classroom/subjects/{subject_id}/resources/
@@ -1148,10 +1177,8 @@ Auth: Required (verified faculty, owner)
 [
     {
         "id": 1,
-        "topic": "WEEK 1 · INTRODUCTION",
         "title": "Course Syllabus.pdf",
         "resource_type": "PDF",
-        "size_label": "240 KB",
         "description": "Full grading breakdown and weekly outline.",
         "file_url": "https://res.cloudinary.com/...",
         "created_at": "2026-06-08T20:00:00Z"
@@ -1174,13 +1201,14 @@ Content-Type: application/json     (video link, or already-hosted URL)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| topic | string | yes | grouping label, max 100 chars |
 | title | string | yes | resource title, max 200 chars |
 | resource_type | string | yes | one of PDF / PPT / DOC / VID |
-| size_label | string | no | e.g. "240 KB" or "42 min" |
 | description | string | no | what the resource is for |
 | file | file | no | document to upload (PDF/PPT/DOC) |
 | file_url | string | no | video link, or a pre-hosted URL |
+
+The week a resource belongs to is derived from its `created_at` upload time —
+there is no week/topic field to send.
 
 **Success response — 201:** returns the created resource (same shape as 11.1)
 
@@ -1211,6 +1239,110 @@ Content-Type: application/json  or  multipart/form-data
 ```
 DELETE /api/classroom/subjects/{subject_id}/resources/{id}/
 Auth: Required (verified faculty, owner)
+```
+
+**Success response — 204:** no body
+
+---
+
+## 12. Classroom — Notices
+
+Notices belong to a subject. Each notice has an author, an optional highlighted
+callout (e.g. a deadline), and an optional file attachment. Endpoints are
+scoped to the owning faculty; a subject owned by someone else returns `404`.
+
+> Only the owning faculty can post notices for now. Class representatives (CRs)
+> will be able to post once the class/enrollment feature exists — the payload
+> already reports the author's `role` (`FACULTY` / `CR` / `STUDENT`).
+
+Every notice includes:
+- `author` — `{ id, full_name, role }` where `role` is the badge to display.
+- `mine` — `true` if the requesting user is the author (show edit/delete).
+- `highlight` — the callout text; an empty string means no callout.
+
+### 12.1 List Subject Notices
+Returns notices newest-first.
+
+```
+GET /api/classroom/subjects/{subject_id}/notices/
+Auth: Required (verified faculty, owner)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "text": "Midterm exam syllabus has been finalized.",
+        "highlight": "Exam date: Jul 20, 10:00 AM",
+        "attachment_url": "",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": {
+            "id": 5,
+            "full_name": "Dr. Farhana Islam",
+            "role": "FACULTY"
+        },
+        "mine": true
+    }
+]
+```
+
+---
+
+### 12.2 Post Notice
+
+```
+POST /api/classroom/subjects/{subject_id}/notices/
+Auth: Required (verified faculty, owner)
+Content-Type: application/json     (no attachment)
+Content-Type: multipart/form-data  (with attachment)
+```
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| text | string | yes | the notice body |
+| highlight | string | no | highlighted callout, e.g. a deadline (max 200 chars) |
+| file | file | no | optional attachment (uploaded to Cloudinary) |
+
+`author` is taken from the authenticated user; `attachment_url` is set from the
+uploaded `file` and cannot be supplied directly.
+
+**Success response — 201:** returns the created notice (same shape as 12.1)
+
+**Error responses:**
+```json
+{ "text": ["This field is required."] }
+```
+
+---
+
+### 12.3 Edit Notice
+Send only the fields you want to change. **Only the notice's author** may edit
+it (otherwise `403`). Uploading a new `file` replaces the attachment.
+
+```
+PATCH /api/classroom/subjects/{subject_id}/notices/{id}/
+Auth: Required (author)
+Content-Type: application/json  or  multipart/form-data
+```
+
+**Success response — 200:** returns the updated notice
+
+**Error response — 403:**
+```json
+{ "detail": "You can only edit your own notices." }
+```
+
+---
+
+### 12.4 Delete Notice
+**Only the notice's author** may delete it.
+
+```
+DELETE /api/classroom/subjects/{subject_id}/notices/{id}/
+Auth: Required (author)
 ```
 
 **Success response — 204:** no body

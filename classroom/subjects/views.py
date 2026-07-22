@@ -17,6 +17,10 @@ class SubjectView(APIView):
     """
     permission_classes = [IsAuthenticated, IsVerifiedFaculty]
 
+    def get(self, request):
+        subjects = Subject.objects.filter(faculty=request.user.faculty_profile)
+        return Response(SubjectSerializer(subjects, many=True).data)
+
     def post(self, request):
         serializer = SubjectSerializer(data=request.data)
         if serializer.is_valid():

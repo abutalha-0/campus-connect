@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'users.faculty_profile',
     'classroom.subjects',
     'classroom.resources',
+    'classroom.notices',
 
 ]
 
