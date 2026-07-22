@@ -110,6 +110,7 @@ Auth: Not required
         "email": "student@example.com",
         "username": "talha",
         "full_name": "Talha Ahmed",
+        "role": "STUDENT",
         "bio": "",
         "created_at": "2026-06-08T20:00:00Z"
     },
@@ -153,6 +154,7 @@ Auth: Not required
         "email": "student@example.com",
         "username": "talha",
         "full_name": "Talha Ahmed",
+        "role": "STUDENT",
         "bio": "",
         "created_at": "2026-06-08T20:00:00Z"
     },
@@ -211,6 +213,7 @@ Auth: Required
     "email": "student@example.com",
     "username": "talha",
     "full_name": "Talha Ahmed",
+    "role": "STUDENT",
     "bio": "",
     "created_at": "2026-06-08T20:00:00Z"
 }
@@ -244,6 +247,7 @@ Auth: Required
             "email": "student2@example.com",
             "username": "student2",
             "full_name": "Second Student",
+            "role": "STUDENT",
             "bio": "",
             "created_at": "2026-06-08T20:00:00Z"
         }
@@ -274,9 +278,90 @@ Auth: Required
     "email": "student2@example.com",
     "username": "student2",
     "full_name": "Second Student",
+    "role": "STUDENT",
     "bio": "",
     "created_at": "2026-06-08T20:00:00Z"
 }
+```
+
+---
+
+### 1.7 Faculty Register
+Create a new **faculty** account. Returns tokens immediately — no separate login needed. Faculty use the same login endpoint (1.2) as students.
+
+```
+POST /api/faculty/register/
+Auth: Not required
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "full_name": "Dr. Farhana Islam",
+    "email": "farhana@university.edu",
+    "employee_id": "FAC-2291",
+    "department": "CSE",
+    "designation": "ASSISTANT_PROFESSOR",
+    "password": "securepass123"
+}
+```
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| full_name | string | yes | max 100 chars |
+| email | string | yes | valid email format, unique |
+| employee_id | string | yes | max 50 chars, unique |
+| department | string | yes | max 100 chars |
+| designation | string | yes | one of the designation values below |
+| password | string | yes | min 8 characters |
+
+There is **no username field** — a username is auto-generated from the email
+and is not shown to faculty.
+
+**Designation values:**
+```
+LECTURER
+ASSISTANT_PROFESSOR
+ASSOCIATE_PROFESSOR
+PROFESSOR
+```
+
+**Success response — 201:**
+```json
+{
+    "user": {
+        "id": 5,
+        "email": "farhana@university.edu",
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "role": "FACULTY",
+        "bio": "",
+        "created_at": "2026-06-08T20:00:00Z"
+    },
+    "faculty_profile": {
+        "employee_id": "FAC-2291",
+        "department": "CSE",
+        "designation": "ASSISTANT_PROFESSOR",
+        "is_verified": false
+    },
+    "tokens": {
+        "access": "eyJ...",
+        "refresh": "eyJ..."
+    }
+}
+```
+
+New faculty accounts start with `is_verified: false`. An unverified faculty
+member **can still log in**, but is expected to have limited access (e.g. cannot
+create classes or subjects) until the admin office verifies the account.
+
+**Error responses:**
+```json
+{ "email": ["This email is already registered."] }
+{ "employee_id": ["This employee ID is already registered."] }
+{ "password": ["Ensure this field has at least 8 characters."] }
+{ "designation": ["\"X\" is not a valid choice."] }
 ```
 
 ---
@@ -802,6 +887,7 @@ Note: `{id}` is the `UserSkill` ID from the profile response, not the `Skill` ID
 ### Open endpoints (no token needed)
 ```
 POST /api/auth/register/
+POST /api/faculty/register/
 POST /api/auth/login/
 POST /api/auth/token/refresh/
 ```
@@ -812,10 +898,26 @@ All other endpoints require the Authorization header:
 Authorization: Bearer <access_token>
 ```
 
+### Account role values
+Returned as `role` on the user object. Set at registration and read-only afterwards.
+```
+STUDENT    registered via /api/auth/register/
+FACULTY    registered via /api/faculty/register/
+```
+
 ### User type values
+The profile-level `user_type` (distinct from the account `role` above).
 ```
 STUDENT    default
 CR         Class Representative
+```
+
+### Faculty designation values
+```
+LECTURER
+ASSISTANT_PROFESSOR
+ASSOCIATE_PROFESSOR
+PROFESSOR
 ```
 
 ### Proficiency level values

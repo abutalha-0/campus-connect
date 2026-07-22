@@ -7,5 +7,7 @@ from .models import Profile
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
-    if created:
+    # Only students get a student Profile. Faculty accounts have their own
+    # FacultyProfile, created explicitly during faculty registration.
+    if created and instance.role == 'STUDENT':
         Profile.objects.create(user=instance)
