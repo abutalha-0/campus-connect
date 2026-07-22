@@ -8,7 +8,7 @@ from classroom.permissions import IsStudent
 from classroom.subjects.models import Subject
 from classroom.subjects.serializers import SubjectSerializer
 
-from .models import Classroom
+from .models import Classroom, ClassMembership
 from .serializers import ClassroomSerializer
 
 
@@ -38,6 +38,11 @@ class ClassroomView(APIView):
                 {'error': 'You already have a class. Delete it before creating a new one.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if hasattr(request.user, 'class_membership'):
+            return Response(
+                {'error': 'You are already in a class. Leave it before creating your own.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         classroom = Classroom.objects.create(
             creator=request.user,
@@ -50,17 +55,23 @@ class ClassroomView(APIView):
         if isinstance(codes, list) and codes:
             classroom.subjects.set(Subject.objects.filter(code__in=codes))
 
-        return Response(ClassroomSerializer(classroom).data,
+        return Response(ClassroomSerializer(classroom, context={'request': request}).data,
                         status=status.HTTP_201_CREATED)
 
 
 class ClassroomMeView(APIView):
-    """Retrieve or delete the current student's class."""
+    """
+    Retrieve the current student's class (created OR joined), or delete it
+    (creators only — members leave via the leave endpoint).
+    """
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        classroom = get_object_or_404(Classroom, creator=request.user)
-        return Response(ClassroomSerializer(classroom).data)
+        classroom = _resolve_class(request.user)
+        if classroom is None:
+            return Response({'detail': 'You are not in a class.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response(ClassroomSerializer(classroom, context={'request': request}).data)
 
     def delete(self, request):
         classroom = get_object_or_404(Classroom, creator=request.user)
@@ -69,6 +80,55 @@ class ClassroomMeView(APIView):
             return Response({'error': 'Incorrect password.'},
                             status=status.HTTP_400_BAD_REQUEST)
         classroom.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _resolve_class(user):
+    """The class a student belongs to: the one they created, else the one they joined."""
+    owned = getattr(user, 'owned_class', None)
+    if owned is not None:
+        return owned
+    membership = getattr(user, 'class_membership', None)
+    return membership.classroom if membership is not None else None
+
+
+class JoinClassView(APIView):
+    """Join a class by its code."""
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def post(self, request):
+        if hasattr(request.user, 'owned_class'):
+            return Response(
+                {'error': 'You already have your own class. Delete it before joining another.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if hasattr(request.user, 'class_membership'):
+            return Response(
+                {'error': 'You are already in a class. Leave it before joining another.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        code = (request.data.get('code') or '').strip()
+        classroom = Classroom.objects.filter(code__iexact=code).first()
+        if not classroom:
+            return Response({'error': 'No class found with that code.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        ClassMembership.objects.create(classroom=classroom, student=request.user)
+        return Response(ClassroomSerializer(classroom, context={'request': request}).data,
+                        status=status.HTTP_201_CREATED)
+
+
+class LeaveClassView(APIView):
+    """Leave the class the student has joined."""
+    permission_classes = [IsAuthenticated, IsStudent]
+
+    def delete(self, request):
+        membership = getattr(request.user, 'class_membership', None)
+        if membership is None:
+            return Response({'error': 'You are not a member of any class.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        membership.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

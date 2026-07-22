@@ -35,3 +35,21 @@ class Classroom(models.Model):
             code = ''.join(secrets.choice(CLASS_CODE_ALPHABET) for _ in range(6))
             if not cls.objects.filter(code=code).exists():
                 return code
+
+
+class ClassMembership(models.Model):
+    """A student who has joined a class. A student can be in one class at a time."""
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.CASCADE,
+        related_name='memberships'
+    )
+    student = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='class_membership'
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.username} in {self.classroom.code}"

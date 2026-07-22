@@ -5,6 +5,8 @@ from .views import (
     ClassroomView,
     ClassroomMeView,
     ClassroomSubjectView,
+    JoinClassView,
+    LeaveClassView,
 )
 
 urlpatterns = [
@@ -13,4 +15,6 @@ urlpatterns = [
     path('classes/me/', ClassroomMeView.as_view(), name='class-me'),
     path('classes/me/subjects/', ClassroomSubjectView.as_view(), name='class-subject-add'),
     path('classes/me/subjects/<int:subject_id>/', ClassroomSubjectView.as_view(), name='class-subject-remove'),
+    path('classes/join/', JoinClassView.as_view(), name='class-join'),
+    path('classes/leave/', LeaveClassView.as_view(), name='class-leave'),
 ]

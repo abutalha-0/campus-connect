@@ -1353,10 +1353,15 @@ Auth: Required (author)
 
 A **class** is created by a **student** and groups together courses (subjects)
 added via their secret codes. Each class has its own shareable **class code**
-that other students use to join it. A student may own **one class at a time**.
+that other students use to join it. A student is in **one class at a time** —
+either the one they created or the one they joined.
 
 > All endpoints require a **student** account (`role == STUDENT`). Faculty
 > receive `403`.
+
+Every class response includes an **`is_creator`** flag: `true` for the student
+who created the class (who can manage courses and delete it), `false` for a
+student who merely joined (read-only; they can leave).
 
 ### 13.1 Look Up a Subject by Code
 Resolves a subject's secret code to its details — used by the "add course" draft
@@ -1397,6 +1402,7 @@ Content-Type: application/json
     "id": 1,
     "code": "68KYRP",
     "subjects": [ { "id": 1, "name": "Data Structures", "code": "482913", "...": "..." } ],
+    "is_creator": true,
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
@@ -1404,18 +1410,21 @@ Content-Type: application/json
 **Error response — 400:**
 ```json
 { "error": "You already have a class. Delete it before creating a new one." }
+{ "error": "You are already in a class. Leave it before creating your own." }
 ```
 
 ---
 
 ### 13.3 Get My Class
+Returns the class the student created **or** joined, with `is_creator`.
 
 ```
 GET /api/classroom/classes/me/
 Auth: Required (student)
 ```
 
-**Success response — 200:** the class (same shape as 13.2). `404` if none.
+**Success response — 200:** the class (same shape as 13.2). `404` if the
+student is not in any class.
 
 ---
 
@@ -1473,6 +1482,49 @@ Content-Type: application/json
 **Error response — 400:**
 ```json
 { "error": "Incorrect password." }
+```
+
+---
+
+### 13.7 Join a Class
+Join an existing class by its class code. Blocked if the student already owns
+or is already in a class.
+
+```
+POST /api/classroom/classes/join/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "code": "68KYRP" }
+```
+
+**Success response — 201:** the joined class (same shape as 13.2, `is_creator: false`)
+
+**Error responses:**
+```json
+{ "error": "No class found with that code." }
+{ "error": "You are already in a class. Leave it before joining another." }
+{ "error": "You already have your own class. Delete it before joining another." }
+```
+
+---
+
+### 13.8 Leave a Class
+Leave the class the student joined. (Creators don't leave — they delete, §13.6.)
+
+```
+DELETE /api/classroom/classes/leave/
+Auth: Required (student)
+```
+
+**Success response — 204:** no body
+
+**Error response — 400:**
+```json
+{ "error": "You are not a member of any class." }
 ```
 
 ---
