@@ -28,6 +28,8 @@ INSTALLED_APPS = [
     'users.accounts',
     'users.student_profile',
     'users.faculty_profile',
+    'classroom.subjects',
+    'classroom.resources',
 
 ]
 
