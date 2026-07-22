@@ -1,6 +1,17 @@
 from rest_framework.permissions import BasePermission
 
 
+class IsStudent(BasePermission):
+    """Allows access only to authenticated users with the STUDENT role."""
+    message = 'Only students can perform this action.'
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user and user.is_authenticated and getattr(user, 'role', None) == 'STUDENT'
+        )
+
+
 class IsVerifiedFaculty(BasePermission):
     """
     Allows access only to authenticated faculty whose account has been

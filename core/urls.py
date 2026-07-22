@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/classroom/', include('classroom.subjects.urls')),
     path('api/classroom/', include('classroom.resources.urls')),
     path('api/classroom/', include('classroom.notices.urls')),
+    path('api/classroom/', include('classroom.classes.urls')),
 ]

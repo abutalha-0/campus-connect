@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'classroom.subjects',
     'classroom.resources',
     'classroom.notices',
+    'classroom.classes',
 
 ]
 

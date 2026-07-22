@@ -1349,6 +1349,134 @@ Auth: Required (author)
 
 ---
 
+## 13. Classroom — Classes (student side)
+
+A **class** is created by a **student** and groups together courses (subjects)
+added via their secret codes. Each class has its own shareable **class code**
+that other students use to join it. A student may own **one class at a time**.
+
+> All endpoints require a **student** account (`role == STUDENT`). Faculty
+> receive `403`.
+
+### 13.1 Look Up a Subject by Code
+Resolves a subject's secret code to its details — used by the "add course" draft
+to show the subject name before the class is created.
+
+```
+GET /api/classroom/classes/lookup/?code=482913
+Auth: Required (student)
+```
+
+**Success response — 200:** the subject (same shape as §10.2)
+
+**Error response — 404:**
+```json
+{ "error": "No subject found with that code." }
+```
+
+---
+
+### 13.2 Create My Class
+Creates the current student's class. Optionally seed it with subjects by their
+secret codes. Returns `400` if the student already owns a class.
+
+```
+POST /api/classroom/classes/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body (optional):**
+```json
+{ "subject_codes": ["482913", "117205"] }
+```
+
+**Success response — 201:**
+```json
+{
+    "id": 1,
+    "code": "68KYRP",
+    "subjects": [ { "id": 1, "name": "Data Structures", "code": "482913", "...": "..." } ],
+    "created_at": "2026-06-08T20:00:00Z"
+}
+```
+
+**Error response — 400:**
+```json
+{ "error": "You already have a class. Delete it before creating a new one." }
+```
+
+---
+
+### 13.3 Get My Class
+
+```
+GET /api/classroom/classes/me/
+Auth: Required (student)
+```
+
+**Success response — 200:** the class (same shape as 13.2). `404` if none.
+
+---
+
+### 13.4 Add a Course to My Class
+Adds a subject by its secret code.
+
+```
+POST /api/classroom/classes/me/subjects/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "code": "117205" }
+```
+
+**Success response — 201:** the added subject (same shape as §10.2)
+
+**Error responses:**
+```json
+{ "error": "No subject found with that code." }
+{ "error": "This course is already in your class." }
+```
+
+---
+
+### 13.5 Remove a Course from My Class
+
+```
+DELETE /api/classroom/classes/me/subjects/{subject_id}/
+Auth: Required (student)
+```
+
+**Success response — 204:** no body
+
+---
+
+### 13.6 Delete My Class
+Requires the account password as confirmation.
+
+```
+DELETE /api/classroom/classes/me/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "password": "your_account_password" }
+```
+
+**Success response — 204:** no body
+
+**Error response — 400:**
+```json
+{ "error": "Incorrect password." }
+```
+
+---
+
 ## Quick Reference
 
 ### Open endpoints (no token needed)
