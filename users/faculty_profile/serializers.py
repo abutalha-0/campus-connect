@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import FacultyProfile
+from .models import FacultyProfile, FacultyLink
 
 User = get_user_model()
 
@@ -68,3 +68,54 @@ class FacultyProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = FacultyProfile
         fields = ('employee_id', 'department', 'designation', 'is_verified')
+
+
+# ─── Links ────────────────────────────────────────────────────────────────────
+
+class FacultyLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FacultyLink
+        fields = ('id', 'link_name', 'icon', 'url')
+
+
+# ─── Faculty "me" (own profile view/edit) ─────────────────────────────────────
+
+class FacultyBaseUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'full_name', 'email')
+
+
+class FacultyMeSerializer(serializers.ModelSerializer):
+    user = FacultyBaseUserSerializer(read_only=True)
+    links = FacultyLinkSerializer(many=True, read_only=True)
+
+    # Editable identity field that lives on the related User, surfaced here so
+    # the "edit identity" screen can update it in the same PATCH.
+    full_name = serializers.CharField(
+        source='user.full_name', required=False, max_length=100
+    )
+
+    class Meta:
+        model = FacultyProfile
+        fields = (
+            'user',
+            'full_name',
+            'employee_id',
+            'department',
+            'designation',
+            'is_verified',
+            'profile_photo',
+            'updated_at',
+            'links',
+        )
+        # email is intentionally read-only (it is the login identifier);
+        # employee_id / is_verified are not user-editable here.
+        read_only_fields = ('user', 'employee_id', 'is_verified', 'updated_at')
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data and 'full_name' in user_data:
+            instance.user.full_name = user_data['full_name']
+            instance.user.save(update_fields=['full_name'])
+        return super().update(instance, validated_data)

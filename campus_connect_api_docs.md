@@ -366,6 +366,119 @@ create classes or subjects) until the admin office verifies the account.
 
 ---
 
+## 1F. Faculty Profile
+
+Endpoints for a faculty member to view and edit their **own** profile. All
+require a faculty account's token. A student token returns `404`.
+
+### 1F.1 Get My Faculty Profile
+
+```
+GET /api/faculty/me/
+Auth: Required (faculty)
+```
+
+**Success response — 200:**
+```json
+{
+    "user": {
+        "id": 5,
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "email": "farhana@university.edu"
+    },
+    "full_name": "Dr. Farhana Islam",
+    "employee_id": "FAC-2291",
+    "department": "CSE",
+    "designation": "ASSOCIATE_PROFESSOR",
+    "is_verified": false,
+    "profile_photo": "https://res.cloudinary.com/...",
+    "updated_at": "2026-06-08T20:00:00Z",
+    "links": [
+        {
+            "id": 1,
+            "link_name": "LinkedIn",
+            "icon": "linkedin",
+            "url": "https://linkedin.com/in/farhana-islam"
+        }
+    ]
+}
+```
+
+---
+
+### 1F.2 Edit My Faculty Profile
+Update one or more identity fields. Send only the fields you want to change.
+
+```
+PATCH /api/faculty/me/
+Auth: Required (faculty)
+Content-Type: application/json  (text fields only)
+Content-Type: multipart/form-data  (when uploading a photo)
+```
+
+**Fields (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| full_name | string | display name, max 100 chars (stored on the user account) |
+| department | string | max 100 chars |
+| designation | string | one of the designation values |
+| profile_photo | file | image file (jpg, jpeg, png, webp) |
+
+`email`, `employee_id`, `is_verified`, and `username` are **read-only** and
+cannot be changed through this endpoint (any values sent are ignored).
+
+**Success response — 200:** returns the full updated profile (same shape as 1F.1)
+
+---
+
+### 1F.3 Add Faculty Link
+
+```
+POST /api/faculty/me/links/
+Auth: Required (faculty)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "link_name": "LinkedIn",
+    "icon": "linkedin",
+    "url": "https://linkedin.com/in/farhana-islam"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| link_name | string | yes | display name e.g. "LinkedIn" |
+| icon | string | no | icon identifier e.g. "linkedin", "github" |
+| url | string | yes | full URL |
+
+**Success response — 201:**
+```json
+{
+    "id": 1,
+    "link_name": "LinkedIn",
+    "icon": "linkedin",
+    "url": "https://linkedin.com/in/farhana-islam"
+}
+```
+
+---
+
+### 1F.4 Delete Faculty Link
+
+```
+DELETE /api/faculty/me/links/{id}/
+Auth: Required (faculty)
+```
+
+**Success response — 204:** no body
+
+---
+
 ## 2. Profiles
 
 ### 2.1 Get My Profile

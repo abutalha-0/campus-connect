@@ -25,7 +25,22 @@ class FacultyProfile(models.Model):
     # Faculty must be approved by the admin office before they can
     # create classes or subjects.
     is_verified = models.BooleanField(default=False)
+    profile_photo = models.URLField(blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Faculty Profile of {self.user.username}"
+
+
+class FacultyLink(models.Model):
+    faculty = models.ForeignKey(
+        FacultyProfile,
+        on_delete=models.CASCADE,
+        related_name='links'
+    )
+    link_name = models.CharField(max_length=50)
+    icon = models.CharField(max_length=50, blank=True)
+    url = models.URLField()
+
+    def __str__(self):
+        return f"{self.faculty.user.username} → {self.link_name}"
