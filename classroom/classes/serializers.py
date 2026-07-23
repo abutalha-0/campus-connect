@@ -8,13 +8,14 @@ from .models import Classroom
 class ClassroomSerializer(serializers.ModelSerializer):
     subjects = SubjectSerializer(many=True, read_only=True)
     is_creator = serializers.SerializerMethodField()
+    creator_id = serializers.IntegerField(read_only=True)
     creator_name = serializers.CharField(source='creator.full_name', read_only=True)
 
     class Meta:
         model = Classroom
-        fields = ('id', 'code', 'subjects', 'is_creator', 'creator_name', 'created_at')
+        fields = ('id', 'code', 'subjects', 'is_creator', 'creator_id', 'creator_name', 'created_at')
         read_only_fields = (
-            'id', 'code', 'subjects', 'is_creator', 'creator_name', 'created_at'
+            'id', 'code', 'subjects', 'is_creator', 'creator_id', 'creator_name', 'created_at'
         )
 
     def get_is_creator(self, obj):

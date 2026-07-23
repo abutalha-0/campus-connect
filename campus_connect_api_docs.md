@@ -1054,6 +1054,7 @@ Auth: Required (verified faculty)
         "room": "302",
         "code": "739326",
         "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
         "created_at": "2026-06-08T20:00:00Z"
     }
 ]
@@ -1102,6 +1103,7 @@ Content-Type: application/json
     "room": "402",
     "code": "828230",
     "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
@@ -1140,17 +1142,20 @@ Auth: Required
     "room": "402",
     "code": "828230",
     "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
     "is_owner": false,
     "can_post": true,
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
 
-`is_owner` is `true` only for the subject's faculty (use it to show subject
-settings/update/delete). `can_post` is `true` for the faculty owner or the
-class **CR** (use it to show "Post Resource"/"Post Notice"). This same shape
-(including `is_owner`/`can_post`) is returned everywhere a subject appears —
-list, create, and inside a class response.
+`faculty_user_id` is the owning faculty's user id — use it to link to their
+public profile (`GET /api/faculty/{user_id}/`, §1F.5). `is_owner` is `true`
+only for the subject's faculty (use it to show subject settings/update/delete).
+`can_post` is `true` for the faculty owner or the class **CR** (use it to show
+"Post Resource"/"Post Notice"). This same shape (including `faculty_user_id`,
+`is_owner`, `can_post`) is returned everywhere a subject appears — list,
+create, and inside a class response.
 
 ---
 
@@ -1485,9 +1490,14 @@ Content-Type: application/json
     "code": "68KYRP",
     "subjects": [ { "id": 1, "name": "Data Structures", "code": "482913", "...": "..." } ],
     "is_creator": true,
+    "creator_id": 9,
+    "creator_name": "Sara Khan",
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
+
+`creator_id` is the class creator's user id — use it to link to their profile
+(the creator is always a student, so `GET /api/profiles/{user_id}/`, §2.3).
 
 **Error responses:**
 ```json
