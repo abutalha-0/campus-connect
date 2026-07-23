@@ -6,6 +6,10 @@ from .models import Notice
 
 
 class NoticeSerializer(serializers.ModelSerializer):
+    # Declared explicitly (not inferred from the model) so it's genuinely
+    # required on create despite the model field being blank=True for
+    # migration/backfill flexibility.
+    title = serializers.CharField(max_length=200, required=True, allow_blank=False)
     author = serializers.SerializerMethodField()
     mine = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
@@ -13,7 +17,7 @@ class NoticeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Notice
-        fields = ('id', 'text', 'highlight', 'event_date', 'event_time',
+        fields = ('id', 'title', 'text', 'highlight', 'event_date', 'event_time',
                   'attachment_url', 'created_at', 'author', 'mine', 'can_edit',
                   'has_highlight')
         read_only_fields = ('id', 'created_at', 'attachment_url', 'author', 'mine',

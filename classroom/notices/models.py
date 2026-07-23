@@ -15,6 +15,10 @@ class Notice(models.Model):
         on_delete=models.CASCADE,
         related_name='notices'
     )
+    # blank=True at the DB level only so existing rows (backfilled by
+    # migration) and this model stay flexible; the API requires a real title
+    # on create (see NoticeSerializer).
+    title = models.CharField(max_length=200, blank=True)
     text = models.TextField()
     # Optional highlighted callout label (e.g. "Exam date", "New deadline").
     # Empty means no free-text callout.

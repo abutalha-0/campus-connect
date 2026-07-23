@@ -13,7 +13,6 @@ class ScheduleEventSerializer(serializers.ModelSerializer):
     notice_id = serializers.IntegerField(source='id', read_only=True)
     subject_id = serializers.IntegerField(read_only=True)
     subject_name = serializers.CharField(source='subject.name', read_only=True)
-    title = serializers.SerializerMethodField()
     author_role = serializers.SerializerMethodField()
 
     class Meta:
@@ -22,14 +21,6 @@ class ScheduleEventSerializer(serializers.ModelSerializer):
             'notice_id', 'subject_id', 'subject_name',
             'title', 'event_date', 'event_time', 'author_role',
         )
-
-    def get_title(self, obj):
-        # The highlight label is the intended short title; a notice can have
-        # a date without one, so fall back to a snippet of the body.
-        if obj.highlight:
-            return obj.highlight
-        text = (obj.text or '').strip()
-        return text if len(text) <= 60 else text[:57] + '…'
 
     def get_author_role(self, obj):
         return author_role_label(obj.author)

@@ -1307,8 +1307,8 @@ Auth: Required (verified faculty, owner)
 
 ## 12. Classroom — Notices
 
-Notices belong to a subject. Each notice has an author, an optional highlighted
-callout, and an optional file attachment.
+Notices belong to a subject. Each notice has a **title**, a body, an author, an
+optional highlighted callout, and an optional file attachment.
 
 **Access** is the same as resources (§11): the faculty owner and enrolled
 students may **view**; the faculty owner or the class **CR** may **post**; the
@@ -1343,6 +1343,7 @@ Auth: Required (faculty owner or enrolled student)
 [
     {
         "id": 1,
+        "title": "Midterm Exam Announcement",
         "text": "Midterm exam syllabus has been finalized.",
         "highlight": "Exam date",
         "event_date": "2026-07-20",
@@ -1376,6 +1377,7 @@ Content-Type: multipart/form-data  (with attachment)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
+| title | string | **yes** | short title, max 200 chars — this is what Schedule (§15) displays |
 | text | string | yes | the notice body |
 | highlight | string | no | free-text callout label, e.g. "Exam date" (max 200 chars) |
 | event_date | string | no | `YYYY-MM-DD`; setting this alone also triggers the highlight |
@@ -1389,6 +1391,7 @@ uploaded `file` and cannot be supplied directly.
 
 **Error responses:**
 ```json
+{ "title": ["This field is required."] }
 { "text": ["This field is required."] }
 { "event_time": ["event_time requires event_date to also be set."] }
 ```
@@ -1835,9 +1838,7 @@ Auth: Required (class member)
 - Sorted by `event_date` then `event_time`, ascending.
 - Only includes events from **the current Saturday–Friday week onward** —
   past events don't appear here (they're still visible as regular notices).
-- `title` is the notice's `highlight` label; if a notice has a date but no
-  highlight text, `title` falls back to a truncated snippet of its body so it
-  is never blank.
+- `title` is the notice's own `title` field (§12.2) — not the highlight label.
 - `event_time` is `null` for an all-day event (no time was set on the notice).
 - Tapping an event should open that subject's Notice tab (§10.2 for the
   subject, §12.1 for its notices) scrolled to `notice_id`.
