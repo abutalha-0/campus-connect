@@ -1085,12 +1085,12 @@ Content-Type: application/json
 ---
 
 ### 10.2 Get Subject Detail
-Retrieve a single subject the requesting faculty owns. A subject owned by
-another faculty returns `404`.
+Retrieve a subject's detail: its faculty owner, or any student whose class
+contains it (via Classroom, §13). Anyone else gets `404`.
 
 ```
 GET /api/classroom/subjects/{id}/
-Auth: Required (verified faculty, owner)
+Auth: Required
 ```
 
 **Success response — 200:**
@@ -1103,9 +1103,17 @@ Auth: Required (verified faculty, owner)
     "room": "402",
     "code": "828230",
     "faculty_name": "Dr. Farhana Islam",
+    "is_owner": false,
+    "can_post": true,
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
+
+`is_owner` is `true` only for the subject's faculty (use it to show subject
+settings/update/delete). `can_post` is `true` for the faculty owner or the
+class **CR** (use it to show "Post Resource"/"Post Notice"). This same shape
+(including `is_owner`/`can_post`) is returned everywhere a subject appears —
+list, create, and inside a class response.
 
 ---
 

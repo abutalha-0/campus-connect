@@ -2,8 +2,10 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 
+from classroom.access import can_view_subject
 from classroom.permissions import IsVerifiedFaculty
 
 from .models import Subject
@@ -19,10 +21,12 @@ class SubjectView(APIView):
 
     def get(self, request):
         subjects = Subject.objects.filter(faculty=request.user.faculty_profile)
-        return Response(SubjectSerializer(subjects, many=True).data)
+        return Response(
+            SubjectSerializer(subjects, many=True, context={'request': request}).data
+        )
 
     def post(self, request):
-        serializer = SubjectSerializer(data=request.data)
+        serializer = SubjectSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(faculty=request.user.faculty_profile)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -31,30 +35,35 @@ class SubjectView(APIView):
 
 class SubjectDetailView(APIView):
     """
-    Retrieve, update, or delete a single subject. Scoped to the owning faculty:
-    a subject that isn't owned by the requester returns 404. The share `code`
-    is immutable and cannot be changed through update.
+    Retrieve a subject (its faculty owner, or any student whose class contains
+    it), or update/delete it (faculty owner only). The share `code` is
+    immutable and cannot be changed through update.
     """
-    permission_classes = [IsAuthenticated, IsVerifiedFaculty]
+    permission_classes = [IsAuthenticated]
 
-    def get_object(self, request, pk):
-        return get_object_or_404(
-            Subject, id=pk, faculty=request.user.faculty_profile
-        )
+    def get_owned_subject(self, request, pk):
+        faculty_profile = getattr(request.user, 'faculty_profile', None)
+        if not faculty_profile or not faculty_profile.is_verified:
+            raise Http404
+        return get_object_or_404(Subject, id=pk, faculty=faculty_profile)
 
     def get(self, request, pk):
-        subject = self.get_object(request, pk)
-        return Response(SubjectSerializer(subject).data)
+        subject = get_object_or_404(Subject, id=pk)
+        if not can_view_subject(request.user, subject):
+            raise Http404
+        return Response(SubjectSerializer(subject, context={'request': request}).data)
 
     def patch(self, request, pk):
-        subject = self.get_object(request, pk)
-        serializer = SubjectSerializer(subject, data=request.data, partial=True)
+        subject = self.get_owned_subject(request, pk)
+        serializer = SubjectSerializer(
+            subject, data=request.data, partial=True, context={'request': request}
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        subject = self.get_object(request, pk)
+        subject = self.get_owned_subject(request, pk)
         subject.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
