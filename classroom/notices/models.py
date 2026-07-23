@@ -16,8 +16,16 @@ class Notice(models.Model):
         related_name='notices'
     )
     text = models.TextField()
-    # Optional highlighted callout (e.g. a deadline). Empty means no callout.
+    # Optional highlighted callout label (e.g. "Exam date", "New deadline").
+    # Empty means no free-text callout.
     highlight = models.CharField(max_length=200, blank=True)
+    # Optional structured event date/time (e.g. an exam or deadline). Either
+    # of these being set also triggers the highlighted callout, independent
+    # of `highlight` above. event_time is only meaningful when event_date is
+    # set. Kept structured (not baked into `highlight` text) so the Schedule
+    # feature can read it later.
+    event_date = models.DateField(null=True, blank=True)
+    event_time = models.TimeField(null=True, blank=True)
     # Optional Cloudinary URL for an attached file.
     attachment_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

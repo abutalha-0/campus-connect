@@ -22,12 +22,29 @@ class NoticeSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     mine = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
+    has_highlight = serializers.SerializerMethodField()
 
     class Meta:
         model = Notice
-        fields = ('id', 'text', 'highlight', 'attachment_url', 'created_at',
-                  'author', 'mine', 'can_edit')
-        read_only_fields = ('id', 'created_at', 'attachment_url', 'author', 'mine', 'can_edit')
+        fields = ('id', 'text', 'highlight', 'event_date', 'event_time',
+                  'attachment_url', 'created_at', 'author', 'mine', 'can_edit',
+                  'has_highlight')
+        read_only_fields = ('id', 'created_at', 'attachment_url', 'author', 'mine',
+                            'can_edit', 'has_highlight')
+
+    def validate(self, data):
+        event_time = data.get('event_time', getattr(self.instance, 'event_time', None))
+        event_date = data.get('event_date', getattr(self.instance, 'event_date', None))
+        if event_time and not event_date:
+            raise serializers.ValidationError(
+                {'event_time': 'event_time requires event_date to also be set.'}
+            )
+        return data
+
+    def get_has_highlight(self, obj):
+        """True if the notice should show a highlighted callout — free-text
+        label and/or the structured date/time, either alone is enough."""
+        return bool(obj.highlight or obj.event_date)
 
     def get_author(self, obj):
         return {

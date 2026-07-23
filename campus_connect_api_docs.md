@@ -1266,25 +1266,34 @@ Auth: Required (verified faculty, owner)
 ## 12. Classroom — Notices
 
 Notices belong to a subject. Each notice has an author, an optional highlighted
-callout (e.g. a deadline), and an optional file attachment.
+callout, and an optional file attachment.
 
 **Access** is the same as resources (§11): the faculty owner and enrolled
 students may **view**; the faculty owner or the class **CR** may **post**; the
 author or the faculty owner (moderation) may **edit/delete**.
+
+The highlighted callout has two independent optional parts — either is enough
+to trigger the highlight, and both may be used together:
+- `highlight` — free-text label, e.g. "Exam date" or "New deadline" (max 200 chars).
+- `event_date` / `event_time` — a **structured** date/time (e.g. an exam or
+  deadline), kept separate from `highlight` so a future **Schedule** feature
+  can read it directly. `event_time` is only meaningful when `event_date` is
+  set — sending a time without a date is a validation error.
 
 Every notice includes:
 - `author` — `{ id, full_name, role }` where `role` (`FACULTY` / `CR` /
   `STUDENT`) is the badge to display.
 - `mine` — `true` if the requesting user is the author.
 - `can_edit` — `true` if the current user may edit/delete this notice.
-- `highlight` — the callout text; an empty string means no callout.
+- `has_highlight` — `true` if `highlight` and/or `event_date` is set (show the
+  highlighted callout box).
 
 ### 12.1 List Subject Notices
 Returns notices newest-first.
 
 ```
 GET /api/classroom/subjects/{subject_id}/notices/
-Auth: Required (verified faculty, owner)
+Auth: Required (faculty owner or enrolled student)
 ```
 
 **Success response — 200:**
@@ -1293,7 +1302,9 @@ Auth: Required (verified faculty, owner)
     {
         "id": 1,
         "text": "Midterm exam syllabus has been finalized.",
-        "highlight": "Exam date: Jul 20, 10:00 AM",
+        "highlight": "Exam date",
+        "event_date": "2026-07-20",
+        "event_time": "10:00:00",
         "attachment_url": "",
         "created_at": "2026-06-08T20:00:00Z",
         "author": {
@@ -1301,7 +1312,9 @@ Auth: Required (verified faculty, owner)
             "full_name": "Dr. Farhana Islam",
             "role": "FACULTY"
         },
-        "mine": true
+        "mine": true,
+        "can_edit": true,
+        "has_highlight": true
     }
 ]
 ```
@@ -1312,7 +1325,7 @@ Auth: Required (verified faculty, owner)
 
 ```
 POST /api/classroom/subjects/{subject_id}/notices/
-Auth: Required (verified faculty, owner)
+Auth: Required (faculty owner or class CR)
 Content-Type: application/json     (no attachment)
 Content-Type: multipart/form-data  (with attachment)
 ```
@@ -1322,7 +1335,9 @@ Content-Type: multipart/form-data  (with attachment)
 | Field | Type | Required | Description |
 |---|---|---|---|
 | text | string | yes | the notice body |
-| highlight | string | no | highlighted callout, e.g. a deadline (max 200 chars) |
+| highlight | string | no | free-text callout label, e.g. "Exam date" (max 200 chars) |
+| event_date | string | no | `YYYY-MM-DD`; setting this alone also triggers the highlight |
+| event_time | string | no | `HH:MM:SS`; requires `event_date` to also be set |
 | file | file | no | optional attachment (uploaded to Cloudinary) |
 
 `author` is taken from the authenticated user; `attachment_url` is set from the
@@ -1333,17 +1348,24 @@ uploaded `file` and cannot be supplied directly.
 **Error responses:**
 ```json
 { "text": ["This field is required."] }
+{ "event_time": ["event_time requires event_date to also be set."] }
+```
+```json
+// 403 — not the faculty owner or class CR
+{ "detail": "You do not have permission to post notices here." }
 ```
 
 ---
 
 ### 12.3 Edit Notice
-Send only the fields you want to change. **Only the notice's author** may edit
-it (otherwise `403`). Uploading a new `file` replaces the attachment.
+Send only the fields you want to change. The item's **author**, or the
+subject's **faculty owner** (moderation), may edit it — otherwise `403`.
+Uploading a new `file` replaces the attachment. Send `event_date: null` to
+clear the date (and `event_time` with it).
 
 ```
 PATCH /api/classroom/subjects/{subject_id}/notices/{id}/
-Auth: Required (author)
+Auth: Required (author or faculty owner)
 Content-Type: application/json  or  multipart/form-data
 ```
 
@@ -1357,11 +1379,12 @@ Content-Type: application/json  or  multipart/form-data
 ---
 
 ### 12.4 Delete Notice
-**Only the notice's author** may delete it.
+The item's **author**, or the subject's **faculty owner** (moderation), may
+delete it.
 
 ```
 DELETE /api/classroom/subjects/{subject_id}/notices/{id}/
-Auth: Required (author)
+Auth: Required (author or faculty owner)
 ```
 
 **Success response — 204:** no body
