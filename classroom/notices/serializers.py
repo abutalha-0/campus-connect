@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from classroom.access import can_modify_content
+
 from .models import Notice
 
 
@@ -19,11 +21,13 @@ def author_role_label(user):
 class NoticeSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     mine = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
 
     class Meta:
         model = Notice
-        fields = ('id', 'text', 'highlight', 'attachment_url', 'created_at', 'author', 'mine')
-        read_only_fields = ('id', 'created_at', 'attachment_url', 'author', 'mine')
+        fields = ('id', 'text', 'highlight', 'attachment_url', 'created_at',
+                  'author', 'mine', 'can_edit')
+        read_only_fields = ('id', 'created_at', 'attachment_url', 'author', 'mine', 'can_edit')
 
     def get_author(self, obj):
         return {
@@ -35,3 +39,9 @@ class NoticeSerializer(serializers.ModelSerializer):
     def get_mine(self, obj):
         request = self.context.get('request')
         return bool(request and request.user.id == obj.author_id)
+
+    def get_can_edit(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return False
+        return can_modify_content(request.user, obj.subject, obj.author_id)

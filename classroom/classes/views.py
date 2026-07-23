@@ -33,6 +33,13 @@ class ClassroomView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def post(self, request):
+        # Only a CR may create a class.
+        student_profile = getattr(request.user, 'student_profile', None)
+        if not student_profile or student_profile.user_type != 'CR':
+            return Response(
+                {'error': 'Only a CR can create a class. Configure it from your profile.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         if hasattr(request.user, 'owned_class'):
             return Response(
                 {'error': 'You already have a class. Delete it before creating a new one.'},

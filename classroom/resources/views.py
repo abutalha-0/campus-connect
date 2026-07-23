@@ -2,9 +2,10 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from classroom.permissions import IsVerifiedFaculty
+from classroom.access import can_view_subject, can_post_to_subject, can_modify_content
 from classroom.subjects.models import Subject
 from shared.cloudinary_utils import upload_file
 
@@ -14,65 +15,74 @@ from .serializers import ResourceSerializer
 
 class ResourceView(APIView):
     """
-    List or add resources for a subject the requesting faculty owns. A subject
-    owned by another faculty (or nonexistent) returns 404.
+    List or add resources for a subject. Viewable by the faculty owner and any
+    student whose class contains the subject; postable by the faculty owner or
+    the class CR.
     """
-    permission_classes = [IsAuthenticated, IsVerifiedFaculty]
-
-    def get_subject(self, request, subject_id):
-        return get_object_or_404(
-            Subject, id=subject_id, faculty=request.user.faculty_profile
-        )
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, subject_id):
-        subject = self.get_subject(request, subject_id)
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_view_subject(request.user, subject):
+            raise Http404
         resources = subject.resources.all()
-        return Response(ResourceSerializer(resources, many=True).data)
+        return Response(
+            ResourceSerializer(resources, many=True, context={'request': request}).data
+        )
 
     def post(self, request, subject_id):
-        subject = self.get_subject(request, subject_id)
-        data = request.data.copy()
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_post_to_subject(request.user, subject):
+            return Response({'detail': 'You do not have permission to post resources here.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
-        # An uploaded document takes precedence; otherwise file_url may be a
-        # video link supplied directly in the body.
+        data = request.data.copy()
         if 'file' in request.FILES:
             data['file_url'] = upload_file(
                 request.FILES['file'], folder="campus_connect/resources"
             )
 
-        serializer = ResourceSerializer(data=data)
+        serializer = ResourceSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(subject=subject)
+            serializer.save(subject=subject, author=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ResourceDetailView(APIView):
-    """Edit or delete a single resource within an owned subject."""
-    permission_classes = [IsAuthenticated, IsVerifiedFaculty]
+    """Edit or delete a resource — its author, or the subject's faculty owner."""
+    permission_classes = [IsAuthenticated]
 
-    def get_object(self, request, subject_id, pk):
-        subject = get_object_or_404(
-            Subject, id=subject_id, faculty=request.user.faculty_profile
-        )
-        return get_object_or_404(Resource, id=pk, subject=subject)
+    def _get(self, request, subject_id, pk):
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_view_subject(request.user, subject):
+            raise Http404
+        resource = get_object_or_404(Resource, id=pk, subject=subject)
+        return subject, resource
 
     def patch(self, request, subject_id, pk):
-        resource = self.get_object(request, subject_id, pk)
-        data = request.data.copy()
+        subject, resource = self._get(request, subject_id, pk)
+        if not can_modify_content(request.user, subject, resource.author_id):
+            return Response({'detail': 'You can only edit your own resources.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
+        data = request.data.copy()
         if 'file' in request.FILES:
             data['file_url'] = upload_file(
                 request.FILES['file'], folder="campus_connect/resources"
             )
 
-        serializer = ResourceSerializer(resource, data=data, partial=True)
+        serializer = ResourceSerializer(resource, data=data, partial=True,
+                                        context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, subject_id, pk):
-        resource = self.get_object(request, subject_id, pk)
+        subject, resource = self._get(request, subject_id, pk)
+        if not can_modify_content(request.user, subject, resource.author_id):
+            return Response({'detail': 'You can only delete your own resources.'},
+                            status=status.HTTP_403_FORBIDDEN)
         resource.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

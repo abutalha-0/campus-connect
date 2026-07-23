@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 from classroom.subjects.models import Subject
 
@@ -15,6 +16,15 @@ class Resource(models.Model):
         Subject,
         on_delete=models.CASCADE,
         related_name='resources'
+    )
+    # Who posted this — the subject's faculty, or a class CR. Used to enforce
+    # "edit/delete your own" (faculty may also moderate).
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='posted_resources',
+        null=True,
+        blank=True
     )
     title = models.CharField(max_length=200)
     resource_type = models.CharField(max_length=3, choices=RESOURCE_TYPES)

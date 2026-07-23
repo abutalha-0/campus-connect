@@ -1147,8 +1147,18 @@ Auth: Required (verified faculty, owner)
 
 Resources belong to a subject. They are grouped in the UI by the
 **Saturday–Friday week of their upload time** (`created_at`) — there is no
-manual week/topic field. All endpoints are scoped to the owning faculty; a
-subject owned by someone else returns `404`.
+manual week/topic field.
+
+**Access:**
+- **View** (GET): the subject's faculty owner, or any student whose class
+  contains the subject. Others get `404`.
+- **Post** (POST): the faculty owner, or the **CR** (creator) of a class that
+  contains the subject. Otherwise `403`.
+- **Edit/Delete** (PATCH/DELETE): the item's author, or the subject's faculty
+  owner (moderation). Otherwise `403`.
+
+Each resource includes a **`can_edit`** flag telling the client whether the
+current user may edit/delete it.
 
 A resource is either an **uploaded document** (PDF/PPT/DOC) or a **video link**:
 - To upload a document, send `multipart/form-data` with a `file` part — it is
@@ -1248,16 +1258,17 @@ Auth: Required (verified faculty, owner)
 ## 12. Classroom — Notices
 
 Notices belong to a subject. Each notice has an author, an optional highlighted
-callout (e.g. a deadline), and an optional file attachment. Endpoints are
-scoped to the owning faculty; a subject owned by someone else returns `404`.
+callout (e.g. a deadline), and an optional file attachment.
 
-> Only the owning faculty can post notices for now. Class representatives (CRs)
-> will be able to post once the class/enrollment feature exists — the payload
-> already reports the author's `role` (`FACULTY` / `CR` / `STUDENT`).
+**Access** is the same as resources (§11): the faculty owner and enrolled
+students may **view**; the faculty owner or the class **CR** may **post**; the
+author or the faculty owner (moderation) may **edit/delete**.
 
 Every notice includes:
-- `author` — `{ id, full_name, role }` where `role` is the badge to display.
-- `mine` — `true` if the requesting user is the author (show edit/delete).
+- `author` — `{ id, full_name, role }` where `role` (`FACULTY` / `CR` /
+  `STUDENT`) is the badge to display.
+- `mine` — `true` if the requesting user is the author.
+- `can_edit` — `true` if the current user may edit/delete this notice.
 - `highlight` — the callout text; an empty string means no callout.
 
 ### 12.1 List Subject Notices
@@ -1351,17 +1362,20 @@ Auth: Required (author)
 
 ## 13. Classroom — Classes (student side)
 
-A **class** is created by a **student** and groups together courses (subjects)
-added via their secret codes. Each class has its own shareable **class code**
-that other students use to join it. A student is in **one class at a time** —
-either the one they created or the one they joined.
+A **class** is created by a **CR** (a student whose `student_profile.user_type`
+is `CR`) and groups together courses (subjects) added via their secret codes.
+Each class has its own shareable **class code** that other students use to join
+it. A student is in **one class at a time** — either the one they created or the
+one they joined. The CR of a class can post/manage resources & notices in its
+subjects (see §11–12).
 
 > All endpoints require a **student** account (`role == STUDENT`). Faculty
 > receive `403`.
 
 Every class response includes an **`is_creator`** flag: `true` for the student
 who created the class (who can manage courses and delete it), `false` for a
-student who merely joined (read-only; they can leave).
+student who merely joined (read-only; they can leave). It also includes
+**`creator_name`** (the class creator's full name) for the class settings view.
 
 ### 13.1 Look Up a Subject by Code
 Resolves a subject's secret code to its details — used by the "add course" draft
@@ -1407,8 +1421,13 @@ Content-Type: application/json
 }
 ```
 
-**Error response — 400:**
+**Error responses:**
 ```json
+// 403 — not a CR
+{ "error": "Only a CR can create a class. Configure it from your profile." }
+```
+```json
+// 400
 { "error": "You already have a class. Delete it before creating a new one." }
 { "error": "You are already in a class. Leave it before creating your own." }
 ```

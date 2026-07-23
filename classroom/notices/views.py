@@ -2,9 +2,10 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from classroom.permissions import IsVerifiedFaculty
+from classroom.access import can_view_subject, can_post_to_subject, can_modify_content
 from classroom.subjects.models import Subject
 from shared.cloudinary_utils import upload_file
 
@@ -14,25 +15,26 @@ from .serializers import NoticeSerializer
 
 class NoticeView(APIView):
     """
-    List or post notices for a subject the requesting faculty owns. (CRs will
-    be able to post once the class/enrollment feature exists; for now only the
-    owning faculty may.)
+    List or post notices for a subject. Viewable by the faculty owner and any
+    student whose class contains the subject; postable by the faculty owner or
+    the class CR.
     """
-    permission_classes = [IsAuthenticated, IsVerifiedFaculty]
-
-    def get_subject(self, request, subject_id):
-        return get_object_or_404(
-            Subject, id=subject_id, faculty=request.user.faculty_profile
-        )
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, subject_id):
-        subject = self.get_subject(request, subject_id)
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_view_subject(request.user, subject):
+            raise Http404
         notices = subject.notices.all()
-        serializer = NoticeSerializer(notices, many=True, context={'request': request})
-        return Response(serializer.data)
+        return Response(
+            NoticeSerializer(notices, many=True, context={'request': request}).data
+        )
 
     def post(self, request, subject_id):
-        subject = self.get_subject(request, subject_id)
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_post_to_subject(request.user, subject):
+            return Response({'detail': 'You do not have permission to post notices here.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
         save_kwargs = {'subject': subject, 'author': request.user}
         if 'file' in request.FILES:
@@ -48,22 +50,21 @@ class NoticeView(APIView):
 
 
 class NoticeDetailView(APIView):
-    """Edit or delete a single notice. Only the notice's author may do so."""
-    permission_classes = [IsAuthenticated, IsVerifiedFaculty]
+    """Edit or delete a notice — its author, or the subject's faculty owner."""
+    permission_classes = [IsAuthenticated]
 
-    def get_object(self, request, subject_id, pk):
-        subject = get_object_or_404(
-            Subject, id=subject_id, faculty=request.user.faculty_profile
-        )
-        return get_object_or_404(Notice, id=pk, subject=subject)
+    def _get(self, request, subject_id, pk):
+        subject = get_object_or_404(Subject, id=subject_id)
+        if not can_view_subject(request.user, subject):
+            raise Http404
+        notice = get_object_or_404(Notice, id=pk, subject=subject)
+        return subject, notice
 
     def patch(self, request, subject_id, pk):
-        notice = self.get_object(request, subject_id, pk)
-        if notice.author_id != request.user.id:
-            return Response(
-                {'detail': 'You can only edit your own notices.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        subject, notice = self._get(request, subject_id, pk)
+        if not can_modify_content(request.user, subject, notice.author_id):
+            return Response({'detail': 'You can only edit your own notices.'},
+                            status=status.HTTP_403_FORBIDDEN)
 
         save_kwargs = {}
         if 'file' in request.FILES:
@@ -71,20 +72,17 @@ class NoticeDetailView(APIView):
                 request.FILES['file'], folder="campus_connect/notice_attachments"
             )
 
-        serializer = NoticeSerializer(
-            notice, data=request.data, partial=True, context={'request': request}
-        )
+        serializer = NoticeSerializer(notice, data=request.data, partial=True,
+                                      context={'request': request})
         if serializer.is_valid():
             serializer.save(**save_kwargs)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, subject_id, pk):
-        notice = self.get_object(request, subject_id, pk)
-        if notice.author_id != request.user.id:
-            return Response(
-                {'detail': 'You can only delete your own notices.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        subject, notice = self._get(request, subject_id, pk)
+        if not can_modify_content(request.user, subject, notice.author_id):
+            return Response({'detail': 'You can only delete your own notices.'},
+                            status=status.HTTP_403_FORBIDDEN)
         notice.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
