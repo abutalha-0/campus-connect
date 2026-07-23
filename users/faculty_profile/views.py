@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
 from shared.cloudinary_utils import upload_image, delete_image, extract_public_id
@@ -14,7 +15,10 @@ from .serializers import (
     FacultyProfileSerializer,
     FacultyMeSerializer,
     FacultyLinkSerializer,
+    FacultyPublicProfileSerializer,
 )
+
+User = get_user_model()
 
 
 class FacultyRegisterView(APIView):
@@ -66,6 +70,18 @@ class FacultyMeView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─── Faculty Profile (public) ─────────────────────────────────────────────────
+
+class FacultyPublicProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id, is_active=True, role='FACULTY')
+        profile = get_object_or_404(FacultyProfile, user=user)
+        serializer = FacultyPublicProfileSerializer(profile)
+        return Response(serializer.data)
 
 
 # ─── Faculty Links ────────────────────────────────────────────────────────────

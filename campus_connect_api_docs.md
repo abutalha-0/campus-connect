@@ -479,6 +479,43 @@ Auth: Required (faculty)
 
 ---
 
+### 1F.5 Get Faculty Public Profile
+Returns another faculty member's public profile — viewable by any
+authenticated user (student or faculty). `user_id` must belong to a faculty
+account, otherwise `404`.
+
+```
+GET /api/faculty/{user_id}/
+Auth: Required
+```
+
+**Success response — 200:**
+```json
+{
+    "user": {
+        "id": 5,
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "email": "farhana@university.edu"
+    },
+    "department": "CSE",
+    "designation": "ASSOCIATE_PROFESSOR",
+    "profile_photo": "https://res.cloudinary.com/...",
+    "links": [
+        { "id": 1, "link_name": "LinkedIn", "icon": "linkedin", "url": "https://linkedin.com/in/farhana-islam" }
+    ],
+    "subjects": [
+        { "id": 1, "name": "Data Structures", "intake": "42", "section": "B" }
+    ]
+}
+```
+
+`employee_id` and `is_verified` are intentionally excluded, and each subject's
+share `code` is never included here (it's a secret for enrollment, not public
+data).
+
+---
+
 ## 2. Profiles
 
 ### 2.1 Get My Profile

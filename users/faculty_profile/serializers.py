@@ -119,3 +119,32 @@ class FacultyMeSerializer(serializers.ModelSerializer):
             instance.user.full_name = user_data['full_name']
             instance.user.save(update_fields=['full_name'])
         return super().update(instance, validated_data)
+
+
+# ─── Faculty public profile (viewed by other users) ────────────────────────────
+
+class FacultyPublicProfileSerializer(serializers.ModelSerializer):
+    user = FacultyBaseUserSerializer(read_only=True)
+    links = FacultyLinkSerializer(many=True, read_only=True)
+    subjects = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FacultyProfile
+        fields = (
+            'user',
+            'department',
+            'designation',
+            'profile_photo',
+            'links',
+            'subjects',
+            # employee_id and is_verified are intentionally excluded — not
+            # meant for other users to see.
+        )
+
+    def get_subjects(self, obj):
+        # The subject's share `code` is a secret for enrollment — never
+        # exposed here, so this can't be built from SubjectSerializer.
+        return [
+            {'id': s.id, 'name': s.name, 'intake': s.intake, 'section': s.section}
+            for s in obj.subjects.all()
+        ]
