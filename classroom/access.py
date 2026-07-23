@@ -20,6 +20,26 @@ def _user_class(user):
     return None, False
 
 
+def get_user_classroom(user):
+    """The class a student belongs to: the one they created, or the one they
+    joined. None if neither (including for faculty, who never have either)."""
+    classroom, _ = _user_class(user)
+    return classroom
+
+
+def author_role_label(user):
+    """
+    The badge shown next to a piece of content's author: FACULTY, CR (a
+    student who is a class representative), or STUDENT.
+    """
+    if getattr(user, 'role', None) == 'FACULTY':
+        return 'FACULTY'
+    student_profile = getattr(user, 'student_profile', None)
+    if student_profile and student_profile.user_type == 'CR':
+        return 'CR'
+    return 'STUDENT'
+
+
 def is_subject_faculty(user, subject):
     return getattr(user, 'role', None) == 'FACULTY' and subject.faculty.user_id == user.id
 

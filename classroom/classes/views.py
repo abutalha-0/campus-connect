@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
+from classroom.access import get_user_classroom
 from classroom.permissions import IsStudent
 from classroom.subjects.models import Subject
 from classroom.subjects.serializers import SubjectSerializer
@@ -74,7 +75,7 @@ class ClassroomMeView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
 
     def get(self, request):
-        classroom = _resolve_class(request.user)
+        classroom = get_user_classroom(request.user)
         if classroom is None:
             return Response({'detail': 'You are not in a class.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -88,15 +89,6 @@ class ClassroomMeView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
         classroom.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-def _resolve_class(user):
-    """The class a student belongs to: the one they created, else the one they joined."""
-    owned = getattr(user, 'owned_class', None)
-    if owned is not None:
-        return owned
-    membership = getattr(user, 'class_membership', None)
-    return membership.classroom if membership is not None else None
 
 
 class JoinClassView(APIView):

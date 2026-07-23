@@ -1,21 +1,8 @@
 from rest_framework import serializers
 
-from classroom.access import can_modify_content
+from classroom.access import can_modify_content, author_role_label
 
 from .models import Notice
-
-
-def author_role_label(user):
-    """
-    The badge shown next to a notice author: FACULTY, CR (a student who is a
-    class representative), or STUDENT.
-    """
-    if getattr(user, 'role', None) == 'FACULTY':
-        return 'FACULTY'
-    student_profile = getattr(user, 'student_profile', None)
-    if student_profile and student_profile.user_type == 'CR':
-        return 'CR'
-    return 'STUDENT'
 
 
 class NoticeSerializer(serializers.ModelSerializer):

@@ -1579,6 +1579,179 @@ Auth: Required (student)
 
 ---
 
+## 14. Classroom — Feed
+
+A class-wide discussion board, open to **every member of a class — the CR and
+regular students alike** (no special CR privileges here, unlike Resources and
+Notices). It has nothing to do with subjects directly; posts may optionally be
+**tagged** with a subject or faculty name from the poster's own class, purely
+for context.
+
+> All endpoints resolve the class from the requesting user directly (a student
+> is in at most one class) — there's no class ID in the URL. Faculty, and any
+> student not currently in a class, get `404` on every endpoint below.
+
+### 14.1 Tag Options
+Subject and faculty names from the student's class, to offer as tag choices
+when composing a post.
+
+```
+GET /api/classroom/feed/tag-options/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+["Data Structures", "Dr. Farhana Islam"]
+```
+
+---
+
+### 14.2 List Feed Posts
+Returns posts newest-first.
+
+```
+GET /api/classroom/feed/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "tag": "Data Structures",
+        "title": "Stuck on the Django migration error from Lab 3",
+        "body": "I keep getting a \"no such table\" error...",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": { "id": 9, "full_name": "Bilal Ahmed", "role": "STUDENT" },
+        "can_edit": false,
+        "score": 14,
+        "my_vote": 0,
+        "comments_count": 6
+    }
+]
+```
+
+`score` is the net upvotes minus downvotes. `my_vote` is the requesting user's
+own vote on this post (`1`, `-1`, or `0` for none).
+
+---
+
+### 14.3 Create Post
+
+```
+POST /api/classroom/feed/
+Auth: Required (class member)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "title": "Anyone up for a study group before the midterm?",
+    "body": "Thinking of booking the library discussion room Thursday evening.",
+    "tag": "Data Structures"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| title | string | yes | max 200 chars |
+| body | string | yes | the post content |
+| tag | string | no | must exactly match a subject or faculty name from §14.1, or be blank |
+
+**Success response — 201:** returns the created post (same shape as 14.2)
+
+**Error response — 400:**
+```json
+{ "tag": ["Choose a subject or faculty from your class, or leave this blank."] }
+```
+
+---
+
+### 14.4 Edit / Delete Post
+Only the post's **author** may edit or delete it — no moderation by CR or
+faculty (they generally can't even see a post outside their own class).
+
+```
+PATCH  /api/classroom/feed/{id}/
+DELETE /api/classroom/feed/{id}/
+Auth: Required (author)
+```
+
+**Success responses:** `200` (updated post) / `204` (no body)
+
+**Error response — 403:**
+```json
+{ "detail": "You can only edit your own posts." }
+```
+
+---
+
+### 14.5 Vote on a Post
+Casts a vote. Sending the **same** value again removes it (toggle-off);
+sending the **opposite** value switches it.
+
+```
+POST /api/classroom/feed/{id}/vote/
+Auth: Required (class member)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "value": 1 }
+```
+`value` must be `1` (upvote) or `-1` (downvote).
+
+**Success response — 200:** returns the post with updated `score`/`my_vote`
+(same shape as 14.2)
+
+---
+
+### 14.6 List / Add Comments
+
+```
+GET  /api/classroom/feed/{post_id}/comments/
+POST /api/classroom/feed/{post_id}/comments/
+Auth: Required (class member)
+Content-Type: application/json  (POST)
+```
+
+**POST body:**
+```json
+{ "text": "Try deleting the migrations folder and re-running makemigrations." }
+```
+
+**Success response:**
+```json
+[
+    {
+        "id": 1,
+        "text": "Try deleting the migrations folder and re-running makemigrations.",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": { "id": 5, "full_name": "Sara Khan", "role": "CR" },
+        "can_edit": true
+    }
+]
+```
+
+---
+
+### 14.7 Edit / Delete Comment
+Only the comment's **author** may edit or delete it.
+
+```
+PATCH  /api/classroom/feed/{post_id}/comments/{id}/
+DELETE /api/classroom/feed/{post_id}/comments/{id}/
+Auth: Required (author)
+```
+
+**Success responses:** `200` (updated comment) / `204` (no body)
+
+---
+
 ## Quick Reference
 
 ### Open endpoints (no token needed)

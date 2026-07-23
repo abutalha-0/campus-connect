@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'classroom.resources',
     'classroom.notices',
     'classroom.classes',
+    'classroom.feed',
 
 ]
 
