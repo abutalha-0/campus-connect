@@ -1799,6 +1799,51 @@ Auth: Required (author)
 
 ---
 
+## 15. Classroom — Schedule
+
+An auto-collected, read-only schedule. It is **not** a separate model — it's
+every **notice with `event_date` set** (§12), across every subject in the
+student's class, reshaped into a compact list. There's nothing to post here;
+faculty and CRs create these dates by adding a date to a notice (§12.2).
+
+> Same scope as Feed: resolves the class from the requesting user directly, no
+> class ID in the URL. Faculty, and any student not currently in a class, get
+> `404`.
+
+### 15.1 List Schedule
+
+```
+GET /api/classroom/schedule/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "notice_id": 12,
+        "subject_id": 3,
+        "subject_name": "Data Structures",
+        "title": "Midterm exam",
+        "event_date": "2026-07-20",
+        "event_time": "10:00:00",
+        "author_role": "FACULTY"
+    }
+]
+```
+
+- Sorted by `event_date` then `event_time`, ascending.
+- Only includes events from **the current Saturday–Friday week onward** —
+  past events don't appear here (they're still visible as regular notices).
+- `title` is the notice's `highlight` label; if a notice has a date but no
+  highlight text, `title` falls back to a truncated snippet of its body so it
+  is never blank.
+- `event_time` is `null` for an all-day event (no time was set on the notice).
+- Tapping an event should open that subject's Notice tab (§10.2 for the
+  subject, §12.1 for its notices) scrolled to `notice_id`.
+
+---
+
 ## Quick Reference
 
 ### Open endpoints (no token needed)
