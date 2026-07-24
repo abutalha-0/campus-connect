@@ -27,7 +27,10 @@ INSTALLED_APPS = [
     # local
     'users.accounts',
     'users.student_profile',
-   
+    # Salman
+    'crew',
+    'notifications',
+
 ]
 
 MIDDLEWARE = [
