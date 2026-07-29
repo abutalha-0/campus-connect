@@ -35,6 +35,9 @@ INSTALLED_APPS = [
     'classroom.feed',
     'classroom.schedule',
     'seed',
+    # Salman
+    'crew',
+    'notifications',
 
 ]
 
