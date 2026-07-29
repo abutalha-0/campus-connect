@@ -1,5 +1,9 @@
+from urllib.parse import urlparse
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+
+from shared.link_platforms import SINGLE_INSTANCE_LINK_PLATFORMS, PLATFORM_DOMAINS
 
 from .models import (
     Profile,
@@ -28,6 +32,27 @@ class LinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Link
         fields = ('id', 'link_name', 'icon', 'url')
+
+    def validate_icon(self, value):
+        icon = (value or '').lower()
+        user = self.context.get('user')
+        if user and icon in SINGLE_INSTANCE_LINK_PLATFORMS:
+            if Link.objects.filter(user=user, icon__iexact=icon).exists():
+                raise serializers.ValidationError(
+                    f"You've already added a {icon.capitalize()} link. Remove it first to add another."
+                )
+        return value
+
+    def validate(self, attrs):
+        icon = (attrs.get('icon') or '').lower()
+        domains = PLATFORM_DOMAINS.get(icon)
+        if domains:
+            host = urlparse(attrs.get('url') or '').netloc.lower()
+            if not any(host == d or host.endswith('.' + d) for d in domains):
+                raise serializers.ValidationError(
+                    {'url': f"Enter a {icon.capitalize()} link (must be a {domains[0]} URL)."}
+                )
+        return attrs
 
 
 class EducationSerializer(serializers.ModelSerializer):

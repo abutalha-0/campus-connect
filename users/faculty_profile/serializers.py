@@ -1,8 +1,11 @@
 import re
+from urllib.parse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
+
+from shared.link_platforms import SINGLE_INSTANCE_LINK_PLATFORMS, PLATFORM_DOMAINS
 
 from .models import FacultyProfile, FacultyLink
 
@@ -76,6 +79,27 @@ class FacultyLinkSerializer(serializers.ModelSerializer):
     class Meta:
         model = FacultyLink
         fields = ('id', 'link_name', 'icon', 'url')
+
+    def validate_icon(self, value):
+        icon = (value or '').lower()
+        faculty = self.context.get('faculty')
+        if faculty and icon in SINGLE_INSTANCE_LINK_PLATFORMS:
+            if FacultyLink.objects.filter(faculty=faculty, icon__iexact=icon).exists():
+                raise serializers.ValidationError(
+                    f"You've already added a {icon.capitalize()} link. Remove it first to add another."
+                )
+        return value
+
+    def validate(self, attrs):
+        icon = (attrs.get('icon') or '').lower()
+        domains = PLATFORM_DOMAINS.get(icon)
+        if domains:
+            host = urlparse(attrs.get('url') or '').netloc.lower()
+            if not any(host == d or host.endswith('.' + d) for d in domains):
+                raise serializers.ValidationError(
+                    {'url': f"Enter a {icon.capitalize()} link (must be a {domains[0]} URL)."}
+                )
+        return attrs
 
 
 # ─── Faculty "me" (own profile view/edit) ─────────────────────────────────────

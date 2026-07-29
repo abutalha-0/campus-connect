@@ -91,7 +91,7 @@ class FacultyLinkView(APIView):
 
     def post(self, request):
         profile = get_object_or_404(FacultyProfile, user=request.user)
-        serializer = FacultyLinkSerializer(data=request.data)
+        serializer = FacultyLinkSerializer(data=request.data, context={'faculty': profile})
         if serializer.is_valid():
             serializer.save(faculty=profile)
             return Response(serializer.data, status=status.HTTP_201_CREATED)

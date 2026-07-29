@@ -103,7 +103,7 @@ class LinkView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = LinkSerializer(data=request.data)
+        serializer = LinkSerializer(data=request.data, context={'user': request.user})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
