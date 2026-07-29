@@ -110,6 +110,7 @@ Auth: Not required
         "email": "student@example.com",
         "username": "talha",
         "full_name": "Talha Ahmed",
+        "role": "STUDENT",
         "bio": "",
         "created_at": "2026-06-08T20:00:00Z"
     },
@@ -153,6 +154,7 @@ Auth: Not required
         "email": "student@example.com",
         "username": "talha",
         "full_name": "Talha Ahmed",
+        "role": "STUDENT",
         "bio": "",
         "created_at": "2026-06-08T20:00:00Z"
     },
@@ -211,6 +213,7 @@ Auth: Required
     "email": "student@example.com",
     "username": "talha",
     "full_name": "Talha Ahmed",
+    "role": "STUDENT",
     "bio": "",
     "created_at": "2026-06-08T20:00:00Z"
 }
@@ -244,6 +247,7 @@ Auth: Required
             "email": "student2@example.com",
             "username": "student2",
             "full_name": "Second Student",
+            "role": "STUDENT",
             "bio": "",
             "created_at": "2026-06-08T20:00:00Z"
         }
@@ -274,10 +278,241 @@ Auth: Required
     "email": "student2@example.com",
     "username": "student2",
     "full_name": "Second Student",
+    "role": "STUDENT",
     "bio": "",
     "created_at": "2026-06-08T20:00:00Z"
 }
 ```
+
+---
+
+### 1.7 Faculty Register
+Create a new **faculty** account. Returns tokens immediately — no separate login needed. Faculty use the same login endpoint (1.2) as students.
+
+```
+POST /api/faculty/register/
+Auth: Not required
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "full_name": "Dr. Farhana Islam",
+    "email": "farhana@university.edu",
+    "employee_id": "FAC-2291",
+    "department": "CSE",
+    "designation": "ASSISTANT_PROFESSOR",
+    "password": "securepass123"
+}
+```
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| full_name | string | yes | max 100 chars |
+| email | string | yes | valid email format, unique |
+| employee_id | string | yes | max 50 chars, unique |
+| department | string | yes | max 100 chars |
+| designation | string | yes | one of the designation values below |
+| password | string | yes | min 8 characters |
+
+There is **no username field** — a username is auto-generated from the email
+and is not shown to faculty.
+
+**Designation values:**
+```
+LECTURER
+ASSISTANT_PROFESSOR
+ASSOCIATE_PROFESSOR
+PROFESSOR
+```
+
+**Success response — 201:**
+```json
+{
+    "user": {
+        "id": 5,
+        "email": "farhana@university.edu",
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "role": "FACULTY",
+        "bio": "",
+        "created_at": "2026-06-08T20:00:00Z"
+    },
+    "faculty_profile": {
+        "employee_id": "FAC-2291",
+        "department": "CSE",
+        "designation": "ASSISTANT_PROFESSOR",
+        "is_verified": false
+    },
+    "tokens": {
+        "access": "eyJ...",
+        "refresh": "eyJ..."
+    }
+}
+```
+
+New faculty accounts start with `is_verified: false`. An unverified faculty
+member **can still log in**, but is expected to have limited access (e.g. cannot
+create classes or subjects) until the admin office verifies the account.
+
+**Error responses:**
+```json
+{ "email": ["This email is already registered."] }
+{ "employee_id": ["This employee ID is already registered."] }
+{ "password": ["Ensure this field has at least 8 characters."] }
+{ "designation": ["\"X\" is not a valid choice."] }
+```
+
+---
+
+## 1F. Faculty Profile
+
+Endpoints for a faculty member to view and edit their **own** profile. All
+require a faculty account's token. A student token returns `404`.
+
+### 1F.1 Get My Faculty Profile
+
+```
+GET /api/faculty/me/
+Auth: Required (faculty)
+```
+
+**Success response — 200:**
+```json
+{
+    "user": {
+        "id": 5,
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "email": "farhana@university.edu"
+    },
+    "full_name": "Dr. Farhana Islam",
+    "employee_id": "FAC-2291",
+    "department": "CSE",
+    "designation": "ASSOCIATE_PROFESSOR",
+    "is_verified": false,
+    "profile_photo": "https://res.cloudinary.com/...",
+    "updated_at": "2026-06-08T20:00:00Z",
+    "links": [
+        {
+            "id": 1,
+            "link_name": "LinkedIn",
+            "icon": "linkedin",
+            "url": "https://linkedin.com/in/farhana-islam"
+        }
+    ]
+}
+```
+
+---
+
+### 1F.2 Edit My Faculty Profile
+Update one or more identity fields. Send only the fields you want to change.
+
+```
+PATCH /api/faculty/me/
+Auth: Required (faculty)
+Content-Type: application/json  (text fields only)
+Content-Type: multipart/form-data  (when uploading a photo)
+```
+
+**Fields (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| full_name | string | display name, max 100 chars (stored on the user account) |
+| department | string | max 100 chars |
+| designation | string | one of the designation values |
+| profile_photo | file | image file (jpg, jpeg, png, webp) |
+
+`email`, `employee_id`, `is_verified`, and `username` are **read-only** and
+cannot be changed through this endpoint (any values sent are ignored).
+
+**Success response — 200:** returns the full updated profile (same shape as 1F.1)
+
+---
+
+### 1F.3 Add Faculty Link
+
+```
+POST /api/faculty/me/links/
+Auth: Required (faculty)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "link_name": "LinkedIn",
+    "icon": "linkedin",
+    "url": "https://linkedin.com/in/farhana-islam"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| link_name | string | yes | display name e.g. "LinkedIn" |
+| icon | string | no | icon identifier e.g. "linkedin", "github" |
+| url | string | yes | full URL |
+
+**Success response — 201:**
+```json
+{
+    "id": 1,
+    "link_name": "LinkedIn",
+    "icon": "linkedin",
+    "url": "https://linkedin.com/in/farhana-islam"
+}
+```
+
+---
+
+### 1F.4 Delete Faculty Link
+
+```
+DELETE /api/faculty/me/links/{id}/
+Auth: Required (faculty)
+```
+
+**Success response — 204:** no body
+
+---
+
+### 1F.5 Get Faculty Public Profile
+Returns another faculty member's public profile — viewable by any
+authenticated user (student or faculty). `user_id` must belong to a faculty
+account, otherwise `404`.
+
+```
+GET /api/faculty/{user_id}/
+Auth: Required
+```
+
+**Success response — 200:**
+```json
+{
+    "user": {
+        "id": 5,
+        "username": "farhana",
+        "full_name": "Dr. Farhana Islam",
+        "email": "farhana@university.edu"
+    },
+    "department": "CSE",
+    "designation": "ASSOCIATE_PROFESSOR",
+    "profile_photo": "https://res.cloudinary.com/...",
+    "links": [
+        { "id": 1, "link_name": "LinkedIn", "icon": "linkedin", "url": "https://linkedin.com/in/farhana-islam" }
+    ],
+    "subjects": [
+        { "id": 1, "name": "Data Structures", "intake": "42", "section": "B" }
+    ]
+}
+```
+
+`employee_id` and `is_verified` are intentionally excluded, and each subject's
+share `code` is never included here (it's a secret for enrollment, not public
+data).
 
 ---
 
@@ -797,11 +1032,825 @@ Note: `{id}` is the `UserSkill` ID from the profile response, not the `Skill` ID
 
 ---
 
+## 10. Classroom — Subjects
+
+### 10.0 List My Subjects
+Returns all subjects owned by the requesting faculty. Group by `intake` on the
+client to render the "Subjects Taught" section.
+
+```
+GET /api/classroom/subjects/
+Auth: Required (verified faculty)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "name": "Data Structures",
+        "intake": "42",
+        "section": "B",
+        "room": "302",
+        "code": "739326",
+        "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
+        "created_at": "2026-06-08T20:00:00Z"
+    }
+]
+```
+
+---
+
+### 10.1 Add Subject
+Create a subject. Only a **verified faculty** account may add subjects; the
+subject is owned by that faculty and issued a unique 6-digit share **code**
+that class creators use to attach it to their class.
+
+```
+POST /api/classroom/subjects/
+Auth: Required (verified faculty)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "name": "Data Structures",
+    "intake": "42",
+    "section": "B",
+    "room": "402"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| name | string | yes | subject name, max 200 chars |
+| intake | string | yes | intake identifier e.g. "42" |
+| section | string | yes | section e.g. "B" |
+| room | string | no | room number e.g. "402" |
+
+`code` is generated by the server and cannot be supplied by the client
+(any value sent is ignored).
+
+**Success response — 201:**
+```json
+{
+    "id": 1,
+    "name": "Data Structures",
+    "intake": "42",
+    "section": "B",
+    "room": "402",
+    "code": "828230",
+    "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
+    "created_at": "2026-06-08T20:00:00Z"
+}
+```
+
+**Error responses:**
+```json
+{ "intake": ["This field is required."] }
+```
+```json
+// 403 — account not verified
+{ "detail": "Your faculty account is pending verification by the admin office. You cannot add subjects until it is verified." }
+```
+```json
+// 403 — not a faculty account
+{ "detail": "Only faculty members can perform this action." }
+```
+
+---
+
+### 10.2 Get Subject Detail
+Retrieve a subject's detail: its faculty owner, or any student whose class
+contains it (via Classroom, §13). Anyone else gets `404`.
+
+```
+GET /api/classroom/subjects/{id}/
+Auth: Required
+```
+
+**Success response — 200:**
+```json
+{
+    "id": 1,
+    "name": "Data Structures",
+    "intake": "42",
+    "section": "B",
+    "room": "402",
+    "code": "828230",
+    "faculty_name": "Dr. Farhana Islam",
+    "faculty_user_id": 5,
+    "is_owner": false,
+    "can_post": true,
+    "created_at": "2026-06-08T20:00:00Z"
+}
+```
+
+`faculty_user_id` is the owning faculty's user id — use it to link to their
+public profile (`GET /api/faculty/{user_id}/`, §1F.5). `is_owner` is `true`
+only for the subject's faculty (use it to show subject settings/update/delete).
+`can_post` is `true` for the faculty owner or the class **CR** (use it to show
+"Post Resource"/"Post Notice"). This same shape (including `faculty_user_id`,
+`is_owner`, `can_post`) is returned everywhere a subject appears — list,
+create, and inside a class response.
+
+---
+
+### 10.3 Update Subject
+Update one or more subject fields. Send only the fields you want to change.
+The share `code` is immutable and cannot be changed (any value sent is ignored).
+
+```
+PATCH /api/classroom/subjects/{id}/
+Auth: Required (verified faculty, owner)
+Content-Type: application/json
+```
+
+**Fields (all optional):**
+
+| Field | Type | Description |
+|---|---|---|
+| name | string | subject name, max 200 chars |
+| intake | string | intake identifier |
+| section | string | section |
+| room | string | room number |
+
+**Success response — 200:** returns the full updated subject (same shape as 10.2)
+
+---
+
+### 10.4 Delete Subject
+
+```
+DELETE /api/classroom/subjects/{id}/
+Auth: Required (verified faculty, owner)
+```
+
+**Success response — 204:** no body
+
+---
+
+## 11. Classroom — Resources
+
+Resources belong to a subject. They are grouped in the UI by the
+**Saturday–Friday week of their upload time** (`created_at`) — there is no
+manual week/topic field.
+
+**Access:**
+- **View** (GET): the subject's faculty owner, or any student whose class
+  contains the subject. Others get `404`.
+- **Post** (POST): the faculty owner, or the **CR** (creator) of a class that
+  contains the subject. Otherwise `403`.
+- **Edit/Delete** (PATCH/DELETE): the item's author, or the subject's faculty
+  owner (moderation). Otherwise `403`.
+
+Each resource includes a **`can_edit`** flag telling the client whether the
+current user may edit/delete it.
+
+A resource is either an **uploaded document** (PDF/PPT/DOC) or a **video link**:
+- To upload a document, send `multipart/form-data` with a `file` part — it is
+  stored on Cloudinary and its URL returned as `file_url`.
+- For a video, send `file_url` directly as the video link.
+
+**Resource types:**
+```
+PDF    PDF document
+PPT    Slides
+DOC    Doc
+VID    Video (link)
+```
+
+### 11.1 List Subject Resources
+Returns a flat list ordered newest-first; group by the Saturday–Friday week of
+`created_at` on the client.
+
+```
+GET /api/classroom/subjects/{subject_id}/resources/
+Auth: Required (verified faculty, owner)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "title": "Course Syllabus.pdf",
+        "resource_type": "PDF",
+        "description": "Full grading breakdown and weekly outline.",
+        "file_url": "https://res.cloudinary.com/...",
+        "created_at": "2026-06-08T20:00:00Z"
+    }
+]
+```
+
+---
+
+### 11.2 Add Resource
+
+```
+POST /api/classroom/subjects/{subject_id}/resources/
+Auth: Required (verified faculty, owner)
+Content-Type: multipart/form-data  (document upload)
+Content-Type: application/json     (video link, or already-hosted URL)
+```
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| title | string | yes | resource title, max 200 chars |
+| resource_type | string | yes | one of PDF / PPT / DOC / VID |
+| description | string | no | what the resource is for |
+| file | file | no | document to upload (PDF/PPT/DOC) |
+| file_url | string | no | video link, or a pre-hosted URL |
+
+The week a resource belongs to is derived from its `created_at` upload time —
+there is no week/topic field to send.
+
+**Success response — 201:** returns the created resource (same shape as 11.1)
+
+**Error responses:**
+```json
+{ "title": ["This field is required."] }
+{ "resource_type": ["\"ZIP\" is not a valid choice."] }
+```
+
+---
+
+### 11.3 Edit Resource
+Send only the fields you want to change. Uploading a new `file` replaces
+`file_url`.
+
+```
+PATCH /api/classroom/subjects/{subject_id}/resources/{id}/
+Auth: Required (verified faculty, owner)
+Content-Type: application/json  or  multipart/form-data
+```
+
+**Success response — 200:** returns the updated resource
+
+---
+
+### 11.4 Delete Resource
+
+```
+DELETE /api/classroom/subjects/{subject_id}/resources/{id}/
+Auth: Required (verified faculty, owner)
+```
+
+**Success response — 204:** no body
+
+---
+
+## 12. Classroom — Notices
+
+Notices belong to a subject. Each notice has a **title**, a body, an author, an
+optional highlighted callout, and an optional file attachment.
+
+**Access** is the same as resources (§11): the faculty owner and enrolled
+students may **view**; the faculty owner or the class **CR** may **post**; the
+author or the faculty owner (moderation) may **edit/delete**.
+
+The highlighted callout has two independent optional parts — either is enough
+to trigger the highlight, and both may be used together:
+- `highlight` — free-text label, e.g. "Exam date" or "New deadline" (max 200 chars).
+- `event_date` / `event_time` — a **structured** date/time (e.g. an exam or
+  deadline), kept separate from `highlight` so a future **Schedule** feature
+  can read it directly. `event_time` is only meaningful when `event_date` is
+  set — sending a time without a date is a validation error.
+
+Every notice includes:
+- `author` — `{ id, full_name, role }` where `role` (`FACULTY` / `CR` /
+  `STUDENT`) is the badge to display.
+- `mine` — `true` if the requesting user is the author.
+- `can_edit` — `true` if the current user may edit/delete this notice.
+- `has_highlight` — `true` if `highlight` and/or `event_date` is set (show the
+  highlighted callout box).
+
+### 12.1 List Subject Notices
+Returns notices newest-first.
+
+```
+GET /api/classroom/subjects/{subject_id}/notices/
+Auth: Required (faculty owner or enrolled student)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "title": "Midterm Exam Announcement",
+        "text": "Midterm exam syllabus has been finalized.",
+        "highlight": "Exam date",
+        "event_date": "2026-07-20",
+        "event_time": "10:00:00",
+        "attachment_url": "",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": {
+            "id": 5,
+            "full_name": "Dr. Farhana Islam",
+            "role": "FACULTY"
+        },
+        "mine": true,
+        "can_edit": true,
+        "has_highlight": true
+    }
+]
+```
+
+---
+
+### 12.2 Post Notice
+
+```
+POST /api/classroom/subjects/{subject_id}/notices/
+Auth: Required (faculty owner or class CR)
+Content-Type: application/json     (no attachment)
+Content-Type: multipart/form-data  (with attachment)
+```
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| title | string | **yes** | short title, max 200 chars — this is what Schedule (§15) displays |
+| text | string | yes | the notice body |
+| highlight | string | no | free-text callout label, e.g. "Exam date" (max 200 chars) |
+| event_date | string | no | `YYYY-MM-DD`; setting this alone also triggers the highlight |
+| event_time | string | no | `HH:MM:SS`; requires `event_date` to also be set |
+| file | file | no | optional attachment (uploaded to Cloudinary) |
+
+`author` is taken from the authenticated user; `attachment_url` is set from the
+uploaded `file` and cannot be supplied directly.
+
+**Success response — 201:** returns the created notice (same shape as 12.1)
+
+**Error responses:**
+```json
+{ "title": ["This field is required."] }
+{ "text": ["This field is required."] }
+{ "event_time": ["event_time requires event_date to also be set."] }
+```
+```json
+// 403 — not the faculty owner or class CR
+{ "detail": "You do not have permission to post notices here." }
+```
+
+---
+
+### 12.3 Edit Notice
+Send only the fields you want to change. The item's **author**, or the
+subject's **faculty owner** (moderation), may edit it — otherwise `403`.
+Uploading a new `file` replaces the attachment. Send `event_date: null` to
+clear the date (and `event_time` with it).
+
+```
+PATCH /api/classroom/subjects/{subject_id}/notices/{id}/
+Auth: Required (author or faculty owner)
+Content-Type: application/json  or  multipart/form-data
+```
+
+**Success response — 200:** returns the updated notice
+
+**Error response — 403:**
+```json
+{ "detail": "You can only edit your own notices." }
+```
+
+---
+
+### 12.4 Delete Notice
+The item's **author**, or the subject's **faculty owner** (moderation), may
+delete it.
+
+```
+DELETE /api/classroom/subjects/{subject_id}/notices/{id}/
+Auth: Required (author or faculty owner)
+```
+
+**Success response — 204:** no body
+
+---
+
+## 13. Classroom — Classes (student side)
+
+A **class** is created by a **CR** (a student whose `student_profile.user_type`
+is `CR`) and groups together courses (subjects) added via their secret codes.
+Each class has its own shareable **class code** that other students use to join
+it. A student is in **one class at a time** — either the one they created or the
+one they joined. The CR of a class can post/manage resources & notices in its
+subjects (see §11–12).
+
+> All endpoints require a **student** account (`role == STUDENT`). Faculty
+> receive `403`.
+
+Every class response includes an **`is_creator`** flag: `true` for the student
+who created the class (who can manage courses and delete it), `false` for a
+student who merely joined (read-only; they can leave). It also includes
+**`creator_name`** (the class creator's full name) for the class settings view.
+
+### 13.1 Look Up a Subject by Code
+Resolves a subject's secret code to its details — used by the "add course" draft
+to show the subject name before the class is created.
+
+```
+GET /api/classroom/classes/lookup/?code=482913
+Auth: Required (student)
+```
+
+**Success response — 200:** the subject (same shape as §10.2)
+
+**Error response — 404:**
+```json
+{ "error": "No subject found with that code." }
+```
+
+---
+
+### 13.2 Create My Class
+Creates the current student's class. Optionally seed it with subjects by their
+secret codes. Returns `400` if the student already owns a class.
+
+```
+POST /api/classroom/classes/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body (optional):**
+```json
+{ "subject_codes": ["482913", "117205"] }
+```
+
+**Success response — 201:**
+```json
+{
+    "id": 1,
+    "code": "68KYRP",
+    "subjects": [ { "id": 1, "name": "Data Structures", "code": "482913", "...": "..." } ],
+    "is_creator": true,
+    "creator_id": 9,
+    "creator_name": "Sara Khan",
+    "created_at": "2026-06-08T20:00:00Z"
+}
+```
+
+`creator_id` is the class creator's user id — use it to link to their profile
+(the creator is always a student, so `GET /api/profiles/{user_id}/`, §2.3).
+
+**Error responses:**
+```json
+// 403 — not a CR
+{ "error": "Only a CR can create a class. Configure it from your profile." }
+```
+```json
+// 400
+{ "error": "You already have a class. Delete it before creating a new one." }
+{ "error": "You are already in a class. Leave it before creating your own." }
+```
+
+---
+
+### 13.3 Get My Class
+Returns the class the student created **or** joined, with `is_creator`.
+
+```
+GET /api/classroom/classes/me/
+Auth: Required (student)
+```
+
+**Success response — 200:** the class (same shape as 13.2). `404` if the
+student is not in any class.
+
+---
+
+### 13.4 Add a Course to My Class
+Adds a subject by its secret code.
+
+```
+POST /api/classroom/classes/me/subjects/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "code": "117205" }
+```
+
+**Success response — 201:** the added subject (same shape as §10.2)
+
+**Error responses:**
+```json
+{ "error": "No subject found with that code." }
+{ "error": "This course is already in your class." }
+```
+
+---
+
+### 13.5 Remove a Course from My Class
+
+```
+DELETE /api/classroom/classes/me/subjects/{subject_id}/
+Auth: Required (student)
+```
+
+**Success response — 204:** no body
+
+---
+
+### 13.6 Delete My Class
+Requires the account password as confirmation.
+
+```
+DELETE /api/classroom/classes/me/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "password": "your_account_password" }
+```
+
+**Success response — 204:** no body
+
+**Error response — 400:**
+```json
+{ "error": "Incorrect password." }
+```
+
+---
+
+### 13.7 Join a Class
+Join an existing class by its class code. Blocked if the student already owns
+or is already in a class.
+
+```
+POST /api/classroom/classes/join/
+Auth: Required (student)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "code": "68KYRP" }
+```
+
+**Success response — 201:** the joined class (same shape as 13.2, `is_creator: false`)
+
+**Error responses:**
+```json
+{ "error": "No class found with that code." }
+{ "error": "You are already in a class. Leave it before joining another." }
+{ "error": "You already have your own class. Delete it before joining another." }
+```
+
+---
+
+### 13.8 Leave a Class
+Leave the class the student joined. (Creators don't leave — they delete, §13.6.)
+
+```
+DELETE /api/classroom/classes/leave/
+Auth: Required (student)
+```
+
+**Success response — 204:** no body
+
+**Error response — 400:**
+```json
+{ "error": "You are not a member of any class." }
+```
+
+---
+
+## 14. Classroom — Feed
+
+A class-wide discussion board, open to **every member of a class — the CR and
+regular students alike** (no special CR privileges here, unlike Resources and
+Notices). It has nothing to do with subjects directly; posts may optionally be
+**tagged** with a subject or faculty name from the poster's own class, purely
+for context.
+
+> All endpoints resolve the class from the requesting user directly (a student
+> is in at most one class) — there's no class ID in the URL. Faculty, and any
+> student not currently in a class, get `404` on every endpoint below.
+
+### 14.1 Tag Options
+Subject and faculty names from the student's class, to offer as tag choices
+when composing a post.
+
+```
+GET /api/classroom/feed/tag-options/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+["Data Structures", "Dr. Farhana Islam"]
+```
+
+---
+
+### 14.2 List Feed Posts
+Returns posts newest-first.
+
+```
+GET /api/classroom/feed/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "id": 1,
+        "tag": "Data Structures",
+        "title": "Stuck on the Django migration error from Lab 3",
+        "body": "I keep getting a \"no such table\" error...",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": { "id": 9, "full_name": "Bilal Ahmed", "role": "STUDENT" },
+        "can_edit": false,
+        "score": 14,
+        "my_vote": 0,
+        "comments_count": 6
+    }
+]
+```
+
+`score` is the net upvotes minus downvotes. `my_vote` is the requesting user's
+own vote on this post (`1`, `-1`, or `0` for none).
+
+---
+
+### 14.3 Create Post
+
+```
+POST /api/classroom/feed/
+Auth: Required (class member)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{
+    "title": "Anyone up for a study group before the midterm?",
+    "body": "Thinking of booking the library discussion room Thursday evening.",
+    "tag": "Data Structures"
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| title | string | yes | max 200 chars |
+| body | string | yes | the post content |
+| tag | string | no | must exactly match a subject or faculty name from §14.1, or be blank |
+
+**Success response — 201:** returns the created post (same shape as 14.2)
+
+**Error response — 400:**
+```json
+{ "tag": ["Choose a subject or faculty from your class, or leave this blank."] }
+```
+
+---
+
+### 14.4 Edit / Delete Post
+Only the post's **author** may edit or delete it — no moderation by CR or
+faculty (they generally can't even see a post outside their own class).
+
+```
+PATCH  /api/classroom/feed/{id}/
+DELETE /api/classroom/feed/{id}/
+Auth: Required (author)
+```
+
+**Success responses:** `200` (updated post) / `204` (no body)
+
+**Error response — 403:**
+```json
+{ "detail": "You can only edit your own posts." }
+```
+
+---
+
+### 14.5 Vote on a Post
+Casts a vote. Sending the **same** value again removes it (toggle-off);
+sending the **opposite** value switches it.
+
+```
+POST /api/classroom/feed/{id}/vote/
+Auth: Required (class member)
+Content-Type: application/json
+```
+
+**Request body:**
+```json
+{ "value": 1 }
+```
+`value` must be `1` (upvote) or `-1` (downvote).
+
+**Success response — 200:** returns the post with updated `score`/`my_vote`
+(same shape as 14.2)
+
+---
+
+### 14.6 List / Add Comments
+
+```
+GET  /api/classroom/feed/{post_id}/comments/
+POST /api/classroom/feed/{post_id}/comments/
+Auth: Required (class member)
+Content-Type: application/json  (POST)
+```
+
+**POST body:**
+```json
+{ "text": "Try deleting the migrations folder and re-running makemigrations." }
+```
+
+**Success response:**
+```json
+[
+    {
+        "id": 1,
+        "text": "Try deleting the migrations folder and re-running makemigrations.",
+        "created_at": "2026-06-08T20:00:00Z",
+        "author": { "id": 5, "full_name": "Sara Khan", "role": "CR" },
+        "can_edit": true
+    }
+]
+```
+
+---
+
+### 14.7 Edit / Delete Comment
+Only the comment's **author** may edit or delete it.
+
+```
+PATCH  /api/classroom/feed/{post_id}/comments/{id}/
+DELETE /api/classroom/feed/{post_id}/comments/{id}/
+Auth: Required (author)
+```
+
+**Success responses:** `200` (updated comment) / `204` (no body)
+
+---
+
+## 15. Classroom — Schedule
+
+An auto-collected, read-only schedule. It is **not** a separate model — it's
+every **notice with `event_date` set** (§12), across every subject in the
+student's class, reshaped into a compact list. There's nothing to post here;
+faculty and CRs create these dates by adding a date to a notice (§12.2).
+
+> Same scope as Feed: resolves the class from the requesting user directly, no
+> class ID in the URL. Faculty, and any student not currently in a class, get
+> `404`.
+
+### 15.1 List Schedule
+
+```
+GET /api/classroom/schedule/
+Auth: Required (class member)
+```
+
+**Success response — 200:**
+```json
+[
+    {
+        "notice_id": 12,
+        "subject_id": 3,
+        "subject_name": "Data Structures",
+        "title": "Midterm exam",
+        "event_date": "2026-07-20",
+        "event_time": "10:00:00",
+        "author_role": "FACULTY"
+    }
+]
+```
+
+- Sorted by `event_date` then `event_time`, ascending.
+- Only includes events from **the current Saturday–Friday week onward** —
+  past events don't appear here (they're still visible as regular notices).
+- `title` is the notice's own `title` field (§12.2) — not the highlight label.
+- `event_time` is `null` for an all-day event (no time was set on the notice).
+- Tapping an event should open that subject's Notice tab (§10.2 for the
+  subject, §12.1 for its notices) scrolled to `notice_id`.
+
+---
+
 ## Quick Reference
 
 ### Open endpoints (no token needed)
 ```
 POST /api/auth/register/
+POST /api/faculty/register/
 POST /api/auth/login/
 POST /api/auth/token/refresh/
 ```
@@ -812,10 +1861,26 @@ All other endpoints require the Authorization header:
 Authorization: Bearer <access_token>
 ```
 
+### Account role values
+Returned as `role` on the user object. Set at registration and read-only afterwards.
+```
+STUDENT    registered via /api/auth/register/
+FACULTY    registered via /api/faculty/register/
+```
+
 ### User type values
+The profile-level `user_type` (distinct from the account `role` above).
 ```
 STUDENT    default
 CR         Class Representative
+```
+
+### Faculty designation values
+```
+LECTURER
+ASSISTANT_PROFESSOR
+ASSOCIATE_PROFESSOR
+PROFESSOR
 ```
 
 ### Proficiency level values

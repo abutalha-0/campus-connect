@@ -14,6 +14,20 @@ def upload_image(file, folder="campus_connect"):
     return result.get("secure_url")
 
 
+def upload_file(file, folder="campus_connect"):
+    """
+    Upload any file type (PDF, PPT, DOC, etc.) to Cloudinary. Uses
+    resource_type="auto" so non-image documents are accepted, unlike
+    upload_image() which is restricted to image formats.
+    """
+    result = cloudinary.uploader.upload(
+        file,
+        folder=folder,
+        resource_type="auto"
+    )
+    return result.get("secure_url")
+
+
 def delete_image(public_id):
     cloudinary.uploader.destroy(public_id)
 

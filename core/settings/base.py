@@ -27,8 +27,20 @@ INSTALLED_APPS = [
     # local
     'users.accounts',
     'users.student_profile',
+    'users.faculty_profile',
+    'classroom.subjects',
+    'classroom.resources',
+    'classroom.notices',
+    'classroom.classes',
+    'classroom.feed',
+    'classroom.schedule',
+    'seed',
+    #mawa
     'lost_found',
     'route_mate',
+    # Salman
+    'crew',
+    'notifications',
 ]
 
 MIDDLEWARE = [

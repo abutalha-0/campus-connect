@@ -24,9 +24,15 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    ROLE_CHOICES = [
+        ('STUDENT', 'Student'),
+        ('FACULTY', 'Faculty'),
+    ]
+
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=30, unique=True)
     full_name = models.CharField(max_length=100)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='STUDENT')
     bio = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
