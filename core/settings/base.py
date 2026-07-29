@@ -27,7 +27,8 @@ INSTALLED_APPS = [
     # local
     'users.accounts',
     'users.student_profile',
-   
+    'lost_found',
+    'route_mate',
 ]
 
 MIDDLEWARE = [
