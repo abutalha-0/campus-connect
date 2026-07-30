@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 
 from .serializers import RegisterSerializer, UserSerializer
 
@@ -42,9 +42,16 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        user = authenticate(request, username=email, password=password)
+        # Checked manually (rather than via authenticate()) because Django's
+        # ModelBackend silently treats an inactive user as "no such user",
+        # which would make a disabled account indistinguishable from a wrong
+        # password below.
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            user = None
 
-        if user is None:
+        if user is None or not user.check_password(password):
             return Response(
                 {'error': 'Invalid email or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
