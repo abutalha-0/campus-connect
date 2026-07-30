@@ -35,10 +35,12 @@ INSTALLED_APPS = [
     'classroom.feed',
     'classroom.schedule',
     'seed',
+    #mawa
+    'lost_found',
+    'route_mate',
     # Salman
     'crew',
     'notifications',
-
 ]
 
 MIDDLEWARE = [
