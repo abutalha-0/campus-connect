@@ -1,4 +1,4 @@
-from rest_framework import status
+from rest_framework import filters, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView, RetrieveAPIView
@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import DiscoverUserSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -83,13 +83,20 @@ class ProfileView(APIView):
 
 class UserListView(ListAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = UserSerializer
+    serializer_class = DiscoverUserSerializer
+    # ?search=<query> filters by username (case-insensitive, partial match),
+    # applied before pagination so it searches every user, not just the
+    # current page.
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
 
     def get_queryset(self):
         return User.objects.filter(
             is_active=True
         ).exclude(
             id=self.request.user.id
+        ).select_related(
+            'student_profile', 'faculty_profile'
         ).order_by('-created_at')
 
 
