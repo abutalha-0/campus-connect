@@ -17,7 +17,10 @@ def notify_on_resource_posted(sender, instance, created, **kwargs):
         recipients_qs = recipients_qs.exclude(student_id=instance.author_id)
     recipient_ids = recipients_qs.values_list('student_id', flat=True)
 
-    action_url = f'classroom/resources/{instance.id}'
+    # subject_id included for consistency with notices/signals.py, even
+    # though the Android client currently only opens the subject screen
+    # (no "jump to a specific resource" target exists there yet).
+    action_url = f'classroom/subjects/{instance.subject_id}/resources/{instance.id}'
     Notification.objects.bulk_create([
         Notification(
             recipient_id=student_id,

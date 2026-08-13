@@ -16,7 +16,9 @@ def notify_on_notice_posted(sender, instance, created, **kwargs):
         classroom__subjects=instance.subject
     ).exclude(student=instance.author).values_list('student_id', flat=True)
 
-    action_url = f'classroom/notices/{instance.id}'
+    # Includes subject_id: SubjectDetailActivity's "jump to notice" deep link
+    # needs it, and the notice id alone isn't enough to open that screen.
+    action_url = f'classroom/subjects/{instance.subject_id}/notices/{instance.id}'
     title = instance.title or instance.text[:60]
     Notification.objects.bulk_create([
         Notification(
