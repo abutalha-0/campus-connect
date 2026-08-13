@@ -1,3 +1,4 @@
+from django.utils.text import slugify
 from rest_framework import serializers
 
 from users.accounts.serializers import UserSerializer
@@ -42,7 +43,23 @@ class PostSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
+        validated_data['slug'] = self._unique_slug(validated_data['title'])
         return super().create(validated_data)
+
+    @staticmethod
+    def _unique_slug(title):
+        """Post.slug is unique and not client-settable (see read_only_fields
+        above), so it has to be derived here. Falls back to 'post' for titles
+        that slugify to nothing (e.g. all-emoji titles), then disambiguates
+        with a numeric suffix on collision.
+        """
+        base = slugify(title)[:210] or 'post'
+        slug = base
+        suffix = 1
+        while Post.objects.filter(slug=slug).exists():
+            suffix += 1
+            slug = f'{base}-{suffix}'
+        return slug
 
 
 class JoinRequestSerializer(serializers.ModelSerializer):
