@@ -5,3 +5,6 @@ class NoticesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'classroom.notices'
     label = 'notices'
+
+    def ready(self):
+        import classroom.notices.signals

@@ -13,6 +13,8 @@ def notify_on_join_request_change(sender, instance, created, update_fields=None,
     if not created and update_fields is not None and 'status' not in update_fields:
         return
 
+    action_url = f'crew/posts/{instance.post.slug}'
+
     if created:
         Notification.objects.create(
             recipient=instance.post.author,
@@ -21,6 +23,7 @@ def notify_on_join_request_change(sender, instance, created, update_fields=None,
             post=instance.post,
             join_request=instance,
             message=f'{instance.requester} wants to join "{instance.post.title}"',
+            action_url=action_url,
         )
         return
 
@@ -32,4 +35,5 @@ def notify_on_join_request_change(sender, instance, created, update_fields=None,
             post=instance.post,
             join_request=instance,
             message=f'Your request to join "{instance.post.title}" was {instance.status.lower()}',
+            action_url=action_url,
         )

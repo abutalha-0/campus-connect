@@ -10,6 +10,11 @@ class Notification(models.Model):
         ('JOIN_REQUEST', 'Join request'),
         ('JOIN_REQUEST_RESPONSE', 'Join request response'),
         ('POST_FULL', 'Post full'),
+        ('ROUTE_JOIN_REQUEST', 'Route join request'),
+        ('ROUTE_JOIN_REQUEST_RESPONSE', 'Route join request response'),
+        ('NOTICE_POSTED', 'Notice posted'),
+        ('RESOURCE_POSTED', 'Resource posted'),
+        ('FEED_POST', 'Feed post'),
     ]
 
     recipient = models.ForeignKey(
