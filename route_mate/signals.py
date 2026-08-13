@@ -19,7 +19,7 @@ def notify_on_route_join_request_change(sender, instance, created, **kwargs):
             recipient=instance.route.owner,
             actor=instance.requester,
             notification_type='ROUTE_JOIN_REQUEST',
-            message=f'{instance.requester} wants to join your route to {instance.route.destination}',
+            message=f'{instance.requester.full_name} wants to join your route to {instance.route.destination}',
             action_url=action_url,
         )
         return

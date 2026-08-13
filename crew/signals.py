@@ -22,7 +22,7 @@ def notify_on_join_request_change(sender, instance, created, update_fields=None,
             notification_type='JOIN_REQUEST',
             post=instance.post,
             join_request=instance,
-            message=f'{instance.requester} wants to join "{instance.post.title}"',
+            message=f'{instance.requester.full_name} wants to join "{instance.post.title}"',
             action_url=action_url,
         )
         return
