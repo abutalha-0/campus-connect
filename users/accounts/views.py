@@ -5,6 +5,9 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from django.db.models import Count, Prefetch
+
+from users.student_profile.models import Education, UserSkill
 
 from .serializers import DiscoverUserSerializer, RegisterSerializer, UserSerializer
 
@@ -97,6 +100,11 @@ class UserListView(ListAPIView):
             id=self.request.user.id
         ).select_related(
             'student_profile', 'faculty_profile'
+        ).prefetch_related(
+            Prefetch('user_skills', queryset=UserSkill.objects.select_related('skill')),
+            Prefetch('education', queryset=Education.objects.order_by('-start_year')),
+        ).annotate(
+            project_count=Count('projects', distinct=True)
         ).order_by('-created_at')
 
 
