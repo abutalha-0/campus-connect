@@ -15,6 +15,8 @@ class Notification(models.Model):
         ('NOTICE_POSTED', 'Notice posted'),
         ('RESOURCE_POSTED', 'Resource posted'),
         ('FEED_POST', 'Feed post'),
+        ('CLAIM_REQUEST', 'Claim request'),
+        ('CLAIM_REQUEST_RESPONSE', 'Claim request response'),
     ]
 
     recipient = models.ForeignKey(
@@ -40,6 +42,20 @@ class Notification(models.Model):
     )
     join_request = models.ForeignKey(
         JoinRequest,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    lost_found_item = models.ForeignKey(
+        'lost_found.LostFoundItem',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    claim_attempt = models.ForeignKey(
+        'lost_found.ClaimAttempt',
         on_delete=models.CASCADE,
         null=True,
         blank=True,
